@@ -1,7 +1,5 @@
 from logging.config import fileConfig
-
 from sqlalchemy import engine_from_config, pool
-from sqlalchemy import pool
 
 from alembic import context
 
@@ -12,9 +10,10 @@ from app.models.bookshelf import Bookshelf
 
 
 
-# this is the Alembic Config object, which provides
+# Setup up Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+fileConfig(config.config_file_name)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
