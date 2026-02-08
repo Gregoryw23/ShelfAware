@@ -1,8 +1,14 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
+#from sqlalchemy import Column, String, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, text
 from datetime import datetime
 import uuid
 
-from app.db.db import Base
+from app.db.database import Base
+
+from sqlalchemy import text  # make sure this import exists
+
+status = Column(String, nullable=False, server_default=text("'active'"))
+
 
 def new_uuid():
     return str(uuid.uuid4())
@@ -14,6 +20,7 @@ class User(Base):
     password_hash = Column(String, nullable=False)
 
     status = Column(String, nullable=False, server_default=text("'active'"))
+    #status = Column(String, nullable=False, server_default=text("active"))
     created_at = Column(DateTime, nullable=False, default=datetime)
     last_login = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
