@@ -8,3 +8,5 @@ chromadb>=1.0.0 # Vector database for similarity search
 pypdf==5.1.0
 langchain-community==0.3.14
 langchain-openai==0.2.14
+boto3==1.28.13
+python-jose==3.3.0
