@@ -1,8 +1,7 @@
-import pydantic
-from datetime import datetime
-from sqlalchemy import Column, String, DateTime, ForeignKey
+import uuid, pydantic
+from datetime import datetime, date
+from sqlalchemy import Column, String, DateTime, Integer, Date, ForeignKey
 from sqlalchemy.orm import relationship
-
 from app.db.database import Base
 
 class Bookshelf(Base):
@@ -15,9 +14,8 @@ class Bookshelf(Base):
     date_added = Column(DateTime, nullable=False, default=datetime)
     date_started = Column(DateTime, nullable=True)
     date_finished = Column(DateTime, nullable=True)
-
     updated_at = Column(DateTime, nullable=False, default=datetime, onupdate=datetime)
-
+    Synopsis = Column(String, nullable=True)
     book = relationship("Book", back_populates="bookshelves")
 
 from pydantic import BaseModel, Field, ConfigDict

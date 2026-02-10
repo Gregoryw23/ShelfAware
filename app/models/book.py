@@ -2,7 +2,6 @@ import uuid, pydantic
 from datetime import datetime, date
 from sqlalchemy import Column, String, DateTime, Integer, Date
 from sqlalchemy.orm import relationship
-
 from app.db.database import Base
 
 class Book(Base):
@@ -37,6 +36,7 @@ class BookBase(BaseModel):
     abstract: Optional[str] = None
     page_count: Optional[int] = None
     published_date: Optional[date] = None
+    CommunitySynopsis: Optional[str] = None
 
 class BookCreate(BookBase):
     pass
