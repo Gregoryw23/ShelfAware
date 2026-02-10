@@ -14,6 +14,7 @@ class Book(Base):
     cover_image_url = Column(String, nullable=True)
 
     abstract = Column(String, nullable=True)
+    CommunitySynopsis = Column(String, nullable=True)
 
     page_count = Column(Integer, nullable=True)
     published_date = Column(Date, nullable=True)
