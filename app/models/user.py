@@ -31,4 +31,7 @@ class User(Base):
 
     # Relationship with Mood    
     mood = relationship("Mood", back_populates="user")
+
+    # Relationship with password_reset    
+    password_resets = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
     
