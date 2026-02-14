@@ -2,7 +2,9 @@ import logging
 import os
 from fastapi import FastAPI
 from app.db.database import engine, Base
+from app.models import user, mood, book, bookshelf
 from app.services.synopsis_scheduler import SynopsisScheduler
+from app.routes import auth # Import authentication routes
 
 # Configure logging
 logging.basicConfig(
@@ -15,6 +17,9 @@ logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# Register API routers
+app.include_router(auth.router) #Authentication endpoints
 
 # Initialize and start synopsis scheduler on startup
 @app.on_event("startup")
