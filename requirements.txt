@@ -12,3 +12,4 @@ boto3==1.28.13
 python-jose==3.3.0
 apscheduler==3.10.4
 python-dotenv==1.0.0
+passlib[bcrypt]==1.7.4 # Password hashing library using bcrypt for secure storage and verification of user passwords
