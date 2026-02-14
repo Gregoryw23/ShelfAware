@@ -7,7 +7,7 @@ from app.db.database import Base
 class Bookshelf(Base):
     __tablename__ = "bookshelf"
 
-    user_id = Column(String, primary_key=True)  # stub for now (no FK yet)
+    user_id = Column(String, ForeignKey("user.user_id"), primary_key=True, index=True)
     book_id = Column(String, ForeignKey("book.book_id"), primary_key=True)
 
     shelf_status = Column(String, nullable=False, default="want_to_read")
@@ -15,8 +15,14 @@ class Bookshelf(Base):
     date_started = Column(DateTime, nullable=True)
     date_finished = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, nullable=False, default=datetime, onupdate=datetime)
-    Synopsis = Column(String, nullable=True)
+    synopsis = Column(String, nullable=True)
+    
+    # Relationship with user
+    user = relationship("User", back_populates="bookshelf")
+    
+    # Relationship with book
     book = relationship("Book", back_populates="bookshelves")
+
 
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional

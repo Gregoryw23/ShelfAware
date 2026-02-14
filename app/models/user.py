@@ -30,5 +30,5 @@ class User(Base):
     bookshelf = relationship("Bookshelf", back_populates="user")
 
     # Relationship with Mood    
-    moods = relationship("Mood", back_populates="user")
+    mood = relationship("Mood", back_populates="user")
     
