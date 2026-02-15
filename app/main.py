@@ -25,6 +25,7 @@ from app.routes import auth
 from app.routes.admin import router as admin_router
 from app.routes.bookshelf import router as bookshelf_router
 from app.routes import chroma # Import ChromaDB search routes
+from app.routes import user_profile
 
 # Configure logging
 logging.basicConfig(
@@ -95,5 +96,8 @@ def trigger_manual_sync():
 
 # For bookshelf
 #app.include_router(bookshelf.router, prefix="/bookshelf", tags=["bookshelf"])
-app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(bookshelf_router)
+
+#for user profile
+app.include_router(user_profile.router)
