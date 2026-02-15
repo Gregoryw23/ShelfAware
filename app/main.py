@@ -24,6 +24,7 @@ from app.services.synopsis_scheduler import SynopsisScheduler
 from app.routes import auth
 from app.routes.admin import router as admin_router
 from app.routes.bookshelf import router as bookshelf_router
+from app.routes import chroma # Import ChromaDB search routes
 
 # Configure logging
 logging.basicConfig(
@@ -35,11 +36,15 @@ logger = logging.getLogger(__name__)
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="ShelfAware API",
+    description="An API for managing books and integrating with Ollama and ChromaDB",
+    version="0.1.0",
+)
 
 # Register API routers
-app.include_router(auth.router) #Authentication endpoints
 app.include_router(admin_router)
+app.include_router(chroma.router, prefix="/chroma", tags=["ChromaDB"]) # ChromaDB search endpoints
 
 # Initialize and start synopsis scheduler on startup
 @app.on_event("startup")
