@@ -1,11 +1,29 @@
+# import logging
+# import os
+# from fastapi import FastAPI
+# from app.db.database import engine, Base
+# from app.models import user, mood, book, bookshelf, password_reset
+# from app.services.synopsis_scheduler import SynopsisScheduler
+# from app.routes import auth # Import authentication routes
+# <<<<<<< feature/jwt-auth-rbac
+# from app.routes.admin import router as admin_router
+# =======
+# from app.routes import bookshelf #Import bookshelf routes
+# from app.routes.auth import router as auth_router
+# from app.routes.bookshelf import router as bookshelf_router
+
+# >>>>>>> main
+
+#Resolving conflicting auth call for both bookshelf and auth_router
 import logging
 import os
 from fastapi import FastAPI
 from app.db.database import engine, Base
 from app.models import user, mood, book, bookshelf, password_reset
 from app.services.synopsis_scheduler import SynopsisScheduler
-from app.routes import auth # Import authentication routes
+from app.routes import auth
 from app.routes.admin import router as admin_router
+from app.routes.bookshelf import router as bookshelf_router
 
 # Configure logging
 logging.basicConfig(
@@ -67,3 +85,10 @@ def trigger_manual_sync():
     except Exception as e:
         logger.error(f"Manual sync failed: {str(e)}")
         return {"status": "error", "message": str(e)}
+    
+    from app.routes import bookshelf
+
+# For bookshelf
+#app.include_router(bookshelf.router, prefix="/bookshelf", tags=["bookshelf"])
+app.include_router(auth_router)
+app.include_router(bookshelf_router)
