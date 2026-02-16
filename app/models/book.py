@@ -33,6 +33,12 @@ class Book(Base):
         cascade="all, delete-orphan"
     )
 
+    genres = relationship(
+        "Genre",
+        secondary="book_genre",
+        backref="books"
+    )
+
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
