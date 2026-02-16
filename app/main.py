@@ -21,7 +21,7 @@ from fastapi import FastAPI
 from app.db.database import engine, Base
 from app.models import user, bookshelf, password_reset
 from app.services.synopsis_scheduler import SynopsisScheduler
-from app.routes import auth, books, bookshelves
+from app.routes import auth, books, bookshelf
 from app.routes.admin import router as admin_router
 from app.routes.bookshelf import router as bookshelf_router
 from app.routes import chroma # Import ChromaDB search routes
@@ -47,7 +47,7 @@ app = FastAPI(
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(books.router, prefix="/books", tags=["Books"])
-app.include_router(bookshelves.router, prefix="/bookshelves", tags=["Bookshelves"])
+app.include_router(bookshelf.router, prefix="/bookshelf", tags=["Bookshelf"])
 
 
 # Initialize and start synopsis scheduler on startup
