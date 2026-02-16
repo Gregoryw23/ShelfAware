@@ -34,4 +34,7 @@ class User(Base):
 
     # Relationship with password_reset    
     password_resets = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
+
+    # Relationship with Review
+    reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     

@@ -1,24 +1,29 @@
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+from typing import Optional, Literal
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+
+ShelfStatus = Literal["want_to_read", "currently_reading", "read"]
+
 
 class BookshelfCreate(BaseModel):
-    book_id: str = Field(..., description="UUID of the book")
-    shelf_status: str = Field(default="want_to_read", description="want_to_read | reading | finished")
+    book_id: str = Field(..., min_length=1)
 
-class BookshelfUpdate(BaseModel):
-    shelf_status: Optional[str] = None
-    date_started: Optional[datetime] = None
-    date_finished: Optional[datetime] = None
 
-class BookshelfRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class BookshelfStatusUpdate(BaseModel):
+    shelf_status: ShelfStatus
 
+
+class BookshelfOut(BaseModel):
     user_id: str
     book_id: str
-    shelf_status: str
+    shelf_status: ShelfStatus
     date_added: datetime
     date_started: Optional[datetime] = None
     date_finished: Optional[datetime] = None
     updated_at: datetime
     synopsis: Optional[str] = None
+
+    class Config:
+        from_attributes = True  # Pydantic v2 compatibility

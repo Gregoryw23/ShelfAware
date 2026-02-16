@@ -27,6 +27,12 @@ class Book(Base):
         cascade="all, delete-orphan"
     )
 
+    reviews = relationship(
+        "Review",
+        back_populates="book",
+        cascade="all, delete-orphan"
+    )
+
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 

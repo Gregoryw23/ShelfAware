@@ -1,3 +1,20 @@
+# import logging
+# import os
+# from fastapi import FastAPI
+# from app.db.database import engine, Base
+# from app.models import user, mood, book, bookshelf, password_reset
+# from app.services.synopsis_scheduler import SynopsisScheduler
+# from app.routes import auth # Import authentication routes
+# <<<<<<< feature/jwt-auth-rbac
+# from app.routes.admin import router as admin_router
+# =======
+# from app.routes import bookshelf #Import bookshelf routes
+# from app.routes.auth import router as auth_router
+# from app.routes.bookshelf import router as bookshelf_router
+
+# >>>>>>> main
+
+#Resolving conflicting auth call for both bookshelf and auth_router
 import logging
 import os
 from fastapi import FastAPI
@@ -6,6 +23,9 @@ from app.models import user, bookshelf, password_reset
 from app.services.synopsis_scheduler import SynopsisScheduler
 from app.routes import auth, books, bookshelves
 from app.routes.admin import router as admin_router
+from app.routes.bookshelf import router as bookshelf_router
+from app.routes import chroma # Import ChromaDB search routes
+from app.routes import user_profile
 
 # Configure logging
 logging.basicConfig(
@@ -17,7 +37,11 @@ logger = logging.getLogger(__name__)
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="ShelfAware API",
+    description="An API for managing books and integrating with Ollama and ChromaDB",
+    version="0.1.0",
+)
 
 # Include routes
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
@@ -70,3 +94,13 @@ def trigger_manual_sync():
     except Exception as e:
         logger.error(f"Manual sync failed: {str(e)}")
         return {"status": "error", "message": str(e)}
+    
+    from app.routes import bookshelf
+
+# For bookshelf
+#app.include_router(bookshelf.router, prefix="/bookshelf", tags=["bookshelf"])
+app.include_router(admin_router)
+app.include_router(bookshelf_router)
+
+#for user profile
+app.include_router(user_profile.router)
