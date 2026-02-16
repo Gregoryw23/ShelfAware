@@ -19,7 +19,7 @@ import logging
 import os
 from fastapi import FastAPI
 from app.db.database import engine, Base
-from app.models import user, bookshelf, password_reset
+from app.models import user, book, genre, book_genre, bookshelf, password_reset
 from app.services.synopsis_scheduler import SynopsisScheduler
 from app.routes import auth, books, bookshelf
 from app.routes.admin import router as admin_router
