@@ -21,7 +21,7 @@ from app.schemas.reset_password import ResetPasswordRequest
 # Security
 from app.core.security import hash_password, verify_password
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter()
 
 @router.post(
         "/register",
