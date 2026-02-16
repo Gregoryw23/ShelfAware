@@ -2,9 +2,9 @@ import logging
 import os
 from fastapi import FastAPI
 from app.db.database import engine, Base
-from app.models import user, mood, book, bookshelf, password_reset
+from app.models import user, bookshelf, password_reset
 from app.services.synopsis_scheduler import SynopsisScheduler
-from app.routes import auth # Import authentication routes
+from app.routes import auth, books, bookshelves
 from app.routes.admin import router as admin_router
 
 # Configure logging
@@ -19,9 +19,12 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Register API routers
-app.include_router(auth.router) #Authentication endpoints
-app.include_router(admin_router)
+# Include routes
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(admin_router, prefix="/admin", tags=["Admin"])
+app.include_router(books.router, prefix="/books", tags=["Books"])
+app.include_router(bookshelves.router, prefix="/bookshelves", tags=["Bookshelves"])
+
 
 # Initialize and start synopsis scheduler on startup
 @app.on_event("startup")
