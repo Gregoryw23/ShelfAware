@@ -1,8 +1,5 @@
 from sqlalchemy.orm import Session
 from app.models.book import Book, BookCreate, BookUpdate
-from app.models.bookshelf import Bookshelf
-from app.services.chroma_service import ChromaService
-from app.schemas.chroma_book import ChromaBookInfo
 
 class BookService:
     def __init__(self, db: Session):
@@ -43,17 +40,4 @@ class BookService:
         self.db.delete(book)
         self.db.commit()
         return True
-
-    def synchronize_books_to_chroma(self, chroma_service: ChromaService):
-        """
-        Synchronizes all existing books from the SQL database to ChromaDB.
-        """
-        books = self.get_books()
-        for book in books:
-            chroma_service.add_book(
-                book_id=book.book_id,
-                title=book.title,
-                abstract=book.abstract # Correctly passing abstract
-            )
-        return len(books)
 
