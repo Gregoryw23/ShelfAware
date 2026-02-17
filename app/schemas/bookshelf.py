@@ -15,7 +15,7 @@ class BookshelfStatusUpdate(BaseModel):
     shelf_status: ShelfStatus
 
 
-class BookshelfOut(BaseModel):
+class BookshelfRead(BaseModel):
     user_id: str
     book_id: str
     shelf_status: ShelfStatus

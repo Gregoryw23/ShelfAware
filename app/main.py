@@ -19,11 +19,13 @@ import logging
 import os
 from fastapi import FastAPI
 from app.db.database import engine, Base
-from app.models import user, mood, book, bookshelf, password_reset
+from app.models import user, book, genre, book_genre, bookshelf, password_reset
 from app.services.synopsis_scheduler import SynopsisScheduler
-from app.routes import auth
+from app.routes import auth, books, bookshelf
 from app.routes.admin import router as admin_router
 from app.routes.bookshelf import router as bookshelf_router
+from app.routes import chroma # Import ChromaDB search routes
+from app.routes import user_profile
 
 # Configure logging
 logging.basicConfig(
@@ -35,11 +37,19 @@ logger = logging.getLogger(__name__)
 # Create tables on startup
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="ShelfAware API",
+    description="An API for managing books and integrating with Ollama and ChromaDB",
+    version="0.1.0",
+)
 
-# Register API routers
-app.include_router(auth.router) #Authentication endpoints
-app.include_router(admin_router)
+# Include routes
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(admin_router, prefix="/admin", tags=["Admin"])
+app.include_router(books.router, prefix="/books", tags=["Books"])
+app.include_router(bookshelf.router, prefix="/bookshelf", tags=["Bookshelf"])
+app.include_router(chroma.router, prefix="/books/search", tags=["Books Search"])
+
 
 # Initialize and start synopsis scheduler on startup
 @app.on_event("startup")
@@ -90,5 +100,8 @@ def trigger_manual_sync():
 
 # For bookshelf
 #app.include_router(bookshelf.router, prefix="/bookshelf", tags=["bookshelf"])
-app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(bookshelf_router)
+
+#for user profile
+app.include_router(user_profile.router)

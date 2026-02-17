@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from app.models.book import Book, BookCreate, BookUpdate
-from app.models.bookshelf import Bookshelf
 
 class BookService:
     def __init__(self, db: Session):

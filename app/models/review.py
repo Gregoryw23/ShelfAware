@@ -44,13 +44,13 @@ class Review(Base):
 
     user_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey("user.user_id", ondelete="CASCADE"),
         nullable=False,
     )
 
     book_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("books.book_id", ondelete="CASCADE"),
+        ForeignKey("book.book_id", ondelete="CASCADE"),
         nullable=False,
     )
 

@@ -21,12 +21,18 @@ class Book(Base):
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-    bookshelves = relationship(
-        "Bookshelf",
-        back_populates="book",
-        cascade="all, delete-orphan"
-    )
+    # Relationship with bookshelves
+    bookshelves = relationship("Bookshelf",  back_populates="book",  cascade="all, delete-orphan")
 
+    # Relationship with reviews
+    reviews = relationship("Review", back_populates="book", cascade="all, delete-orphan")
+
+    #Relationship with genres
+    genres = relationship("Genre", secondary="book_genre", back_populates="books", viewonly=True, lazy='selectin')
+
+    #Relationship with book_genre
+    book_genres = relationship("BookGenre", back_populates="book", cascade="all, delete-orphan")        
+    
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 

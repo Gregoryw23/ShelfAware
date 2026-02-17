@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
-from app.models.book import Book, BookInfo, BookResponse
+from app.models.book import Book
+from app.schemas.book import BookInfo, BookResponse
 from app.services.book_service import BookService
 from app.dependencies.services import get_book_service
 
