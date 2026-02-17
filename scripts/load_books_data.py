@@ -16,7 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db.database import Base, DATABASE_URL
 from app.models.book import Book
 from app.models.genre import Genre
-from app.models.book_genre import book_genre
+from app.models.book_genre import BookGenre
 
 
 def load_books_from_csv(csv_path: str):
@@ -109,7 +109,7 @@ def load_books_from_csv(csv_path: str):
 
                                 # Link genre to book
                                 genre_id = genres_cache[genre_name]
-                                bg = book_genre(
+                                bg = BookGenre(
                                     book_id=book.book_id, genre_id=genre_id
                                 )
                                 session.add(bg)

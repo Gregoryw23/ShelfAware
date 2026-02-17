@@ -7,3 +7,5 @@ from .genre import Genre
 from .mood import Mood
 from .password_reset import PasswordResetToken
 from .review import Review
+from .book_genre import BookGenre
+from .user_profile import UserProfile

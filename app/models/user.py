@@ -40,4 +40,7 @@ class User(Base):
 
     # Relationship with Review
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
+
+    # One-to-one relationship with UserProfile
+    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     
