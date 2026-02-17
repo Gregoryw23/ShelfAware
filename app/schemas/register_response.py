@@ -3,5 +3,5 @@ from app.schemas.user_out import UserOut
 
 class RegisterResponse(BaseModel):
     message: str
-    user: UserOut
+    user_sub: str
     user_confirmed: bool
