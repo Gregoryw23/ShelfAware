@@ -15,6 +15,7 @@ from app.schemas.register_response import RegisterResponse
 from app.schemas.user_login import UserLogin 
 from app.schemas.login_response import LoginResponse
 from app.schemas.user_out import UserOut
+from app.schemas.confirm_user import ConfirmUser
 from app.schemas.forgot_password import ForgotPasswordRequest
 from app.schemas.reset_password import ResetPasswordRequest
 
@@ -80,6 +81,18 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found in database")
     
     return {"message": "Login successful", "user": user, "tokens": tokens}
+
+@router.post("/confirm")
+def confirm(payload: ConfirmUser):
+    email = payload.email.strip().lower()
+    try:
+        result = cognito_service.confirm_user(
+            username=email,
+            confirmation_code=payload.confirmation_code
+        )
+        return {"message": result}
+    except ServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 @router.post("/forgot-password")
 

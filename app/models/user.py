@@ -19,7 +19,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     
     status = Column(String, nullable=False, server_default=text("'active'"))
-    created_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     last_login = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 

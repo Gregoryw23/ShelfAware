@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
-from app.dependencies.roles import required_admin_role
+from app.services.cognito_service import RoleChecker, CognitoAdminRole
 
 router = APIRouter()
 
-@router.get("/users")
+@router.get("/users", dependencies=[Depends(RoleChecker("Admins"))])
 def list_users():
     return {"message": "Admin access granted"}
