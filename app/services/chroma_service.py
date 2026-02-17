@@ -4,6 +4,11 @@ from typing import List, Optional # Added Optional for consistency with ShelfAwa
 import os
 from dotenv import load_dotenv
 
+from sqlalchemy.orm import Session
+from app.dependencies.db import get_db
+from app.models.book import Book
+from app.services.book_service import BookService
+
 # NEW IMPORT for Ollama client
 from ollama import Client as OllamaClient
 
@@ -69,17 +74,15 @@ class ChromaService:
         )
         print(f"Raw ChromaDB query results: {results}")
 
-        # Flatten distances and metadata (results["distances"] and results["metadatas"] are lists of lists)
+        # Flatten ids, distances and metadata (results are lists of lists)
+        ids = results["ids"][0]
         metadatas = results["metadatas"][0]
         distances = results["distances"][0]
 
-        print(metadatas)
-        print(distances)
-
-        # Combine metadata and distances for filtering
+        # Combine id, metadata and distances for filtering
         filtered_results = [
-            {**metadata, "distance": distance} # Add distance to each metadata entry
-            for metadata, distance in zip(metadatas, distances)
+            {"id": book_id, **metadata, "distance": distance} # Add id and distance to each metadata entry
+            for book_id, metadata, distance in zip(ids, metadatas, distances)
             if distance <= distance_threshold # Filter based on distance threshold
         ]
 
@@ -130,3 +133,35 @@ class ChromaService:
         Remove a book from the ChromaDB collection.
         """
         self.collection.delete(ids=[book_id])
+
+    def sync_books(self):
+        """
+        Synchronizes books from the main database to ChromaDB.
+        Handles additions, updates, and deletions to ensure ChromaDB
+        reflects the current state of the main database.
+        """
+        db = next(get_db()) # Get a DB session
+        book_service = BookService(db) # Instantiate BookService with the session
+
+        try:
+            # 1. Get all books from the main database
+            db_books = book_service.get_books() # Using existing get_books method
+            db_book_ids = {str(book.book_id) for book in db_books}
+
+            # 2. Get all existing book IDs from ChromaDB
+            chroma_collection_content = self.collection.get()
+            chroma_book_ids = set(chroma_collection_content.get('ids', []))
+
+            # 3. Add/Update books in ChromaDB (upsert)
+            for book in db_books:
+                self.add_book(str(book.book_id), book.title, book.abstract)
+
+            # 4. Identify and delete books from ChromaDB that are no longer in the main DB
+            books_to_delete_from_chroma = chroma_book_ids - db_book_ids
+            if books_to_delete_from_chroma:
+                self.collection.delete(ids=list(books_to_delete_from_chroma))
+
+            # print(f"ChromaDB Sync: Upserted {len(db_books)} books. Deleted {len(books_to_delete_from_chroma)} books.")
+
+        finally:
+            db.close() # Always close the session

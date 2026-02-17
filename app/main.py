@@ -48,6 +48,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(admin_router, prefix="/admin", tags=["Admin"])
 app.include_router(books.router, prefix="/books", tags=["Books"])
 app.include_router(bookshelf.router, prefix="/bookshelf", tags=["Bookshelf"])
+app.include_router(chroma.router, prefix="/books/search", tags=["Books Search"])
 
 
 # Initialize and start synopsis scheduler on startup

@@ -6,13 +6,19 @@ from app.schemas.chroma_book import ChromaBookInfo # Corrected import path
 router = APIRouter()
 chroma_service = ChromaService()
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-def add_book_to_chromadb(book: ChromaBookInfo):
+@router.post("/sync-from-db", status_code=status.HTTP_200_OK)
+def sync_chromadb_from_db():
     """
-    Add a book's title and abstract to ChromaDB for embedding.
+    Manually trigger synchronization of all books from the main database to ChromaDB.
+    This ensures that the ChromaDB search index is up-to-date with the latest book records,
+    handling additions, updates, and deletions.
     """
-    chroma_service.add_book(book.id, book.title, book.abstract)
-    return {"message": f"Book '{book.title}' added to ChromaDB successfully."}
+    try:
+        chroma_service.sync_books() # This method will handle internal dependencies
+        return {"message": "ChromaDB synchronization triggered successfully."}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to synchronize ChromaDB: {str(e)}")
+
 
 @router.get("/similarities")
 def search_books_in_chromadb(query: str, distance_threshold: float = 0.9): # Changed default to 0.9
