@@ -26,6 +26,9 @@ class User(Base):
     
     favorite_genres_json = Column(String, nullable=True) 
 
+    # Relationship with UserProfile
+    profile = relationship("UserProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    
     # Relationship with Bookshelf
     bookshelf = relationship("Bookshelf", back_populates="user")
 

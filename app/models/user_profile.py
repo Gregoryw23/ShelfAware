@@ -19,8 +19,5 @@ class UserProfile(Base):
     location = Column(String, nullable=True)
     favorite_genres_json = Column(String, nullable=True)
 
-    # Define relationship
-    # Note: For this to work fully, a relationship should ideally be added to app/models/user.py as well.
-    # However, even if user.py is not modified, this line allows access to the User via profile.user.
-    # If you cannot modify user.py, consider removing back_populates to avoid mapping errors.
+    # Define relationship to User model
     user = relationship("User", back_populates="profile")
