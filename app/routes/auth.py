@@ -1,65 +1,65 @@
-from datetime import datetime, timedelta,timezone
-import secrets
-
 from fastapi import APIRouter, Depends, HTTPException, status
+
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.db.database import get_db
 
+from datetime import datetime, timedelta,timezone
+
 # Models
 from app.models.user import User
-from app.models.password_reset import PasswordResetToken
+
+from app.services.cognito_service import CognitoService
 
 # Schemas
 from app.schemas.user_create import UserCreate
+from app.schemas.register_response import RegisterResponse
 from app.schemas.user_out import UserOut
 from app.schemas.user_login import UserLogin 
 from app.schemas.forgot_password import ForgotPasswordRequest
-from app.schemas.reset_password import ResetPasswordRequest
 
-# Security
-from app.core.security import hash_password, verify_password
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter()
+cognito_service = cognito_service
 
-@router.post(
-        "/register",
-        response_model=UserOut,
-        status_code=status.HTTP_201_CREATED,
-        )
+@router.post("/registration", response_model=UserOut, status_code=status.HTTP_201_CREATED,)
 
 def register(payload: UserCreate, db: Session = Depends(get_db)):
     
     # Normalize email
     email = payload.email.strip().lower()
-
-    # Check if email already exists
+    
+    # Check if email already exists locally
     existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    # Hash password
-    hashed_pw = hash_password(payload.password)
-
-    # Create new user
-    new_user = User(
+    try:
+        response = cognito_service.register_user(
+        username=email,
         email=email,
-        password_hash=hashed_pw
+        password=payload.password
     )
 
-    try:
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
+    # Create new user in DB
+    new_user = User(
+        email=email,
+        cognito_sub=response["UserSub"]
+    )
 
-    return new_user
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    return {
+        "message": "User registration successful.",
+        "user_sub": new_user,
+        "user_confirmed": response["UserConfirmed"]
+        }
+
+    except ServiceException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 @router.post("/forgot-password")
 
