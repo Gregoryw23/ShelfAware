@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, DateTime, Text, text
 from sqlalchemy.orm import relationship
 
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from app.db.database import Base
@@ -19,7 +19,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     
     status = Column(String, nullable=False, server_default=text("'active'"))
-    created_at = Column(DateTime, nullable=False, default=datetime)
+    created_at = Column(DateTime, nullable=False, default=datetime.now(timezone.utc))
     last_login = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 

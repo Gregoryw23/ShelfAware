@@ -20,7 +20,7 @@ from app.schemas.reset_password import ResetPasswordRequest
 
 
 router = APIRouter()
-cognito_service = CognitoService
+cognito_service = CognitoService()
 
 @router.post("/registration", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED,)
 
@@ -53,7 +53,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         
         return {
             "message": "User registration successful.",
-            "user_sub": new_user,
+            "user_sub": new_user.cognito_sub,
             "user_confirmed": response.get("UserConfirmed", False)
         }
 
