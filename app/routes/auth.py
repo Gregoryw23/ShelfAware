@@ -16,6 +16,7 @@ from app.schemas.user_login import UserLogin
 from app.schemas.login_response import LoginResponse
 from app.schemas.user_out import UserOut
 from app.schemas.forgot_password import ForgotPasswordRequest
+from app.schemas.reset_password import ResetPasswordRequest
 
 
 router = APIRouter()

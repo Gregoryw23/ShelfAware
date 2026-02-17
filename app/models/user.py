@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text
+from sqlalchemy import Column, String, DateTime, Text, text
 from sqlalchemy.orm import relationship
 
 from datetime import datetime
@@ -19,7 +19,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     
     status = Column(String, nullable=False, server_default=text("'active'"))
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime)
     last_login = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
 
@@ -31,9 +31,6 @@ class User(Base):
 
     # Relationship with Mood    
     mood = relationship("Mood", back_populates="user")
-
-    # Relationship with password_reset    
-    password_resets = relationship("PasswordResetToken", back_populates="user", cascade="all, delete-orphan")
 
     # Relationship with Review
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
