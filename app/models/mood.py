@@ -10,13 +10,9 @@ class Mood(Base):
     __tablename__ = "moods"
 
     id = Column(Integer, primary_key=True)
-
-    # Use UUID type for user_id to match the User model if user_id is a UUID
-    user_id = Column(UUID(as_uuid=True), ForeignKey("user.user_id"), nullable=False)  # Correct reference
-
+    user_id = Column(String, ForeignKey("user.user_id"), nullable=False, index=True)
     mood = Column(String, nullable=False)
     note = Column(String, nullable=True)
     mood_date = Column(Date, nullable=False)
 
-    # Relationship to User model
-    user = relationship("User", back_populates="moods")  # Ensure 'User' has back_populates set
+    user = relationship("User", back_populates="mood")
