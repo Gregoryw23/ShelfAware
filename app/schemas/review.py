@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
@@ -23,4 +23,4 @@ class ReviewOut(ReviewBase):
     created_at: datetime
 
     class Config:
-        orm_mode = True  # enables reading data from ORM objects
+        model_config = ConfigDict(from_attributes=True)
