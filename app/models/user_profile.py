@@ -20,4 +20,4 @@ class UserProfile(Base):
     favorite_genres_json = Column(String, nullable=True)
 
     # Define relationship to User model
-    user = relationship("User", back_populates="profile", uselist=False, cascade="all, delete-orphan")
+    user = relationship("User", back_populates="profile", uselist=False)
