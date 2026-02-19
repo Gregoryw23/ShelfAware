@@ -35,6 +35,14 @@ class UserProfileBase(BaseModel):
         examples=['["Science Fiction", "Mystery", "History"]']
     )
 
+# Patch model for updates (All fields optional for partial updates)
+class UserProfileUpdate(BaseModel):
+    display_name: Optional[str] = None
+    profile_photo_url: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    favorite_genres_json: Optional[str] = None
+
 
 # POST request model (Defines the input box structure)
 class UserProfileCreate(UserProfileBase):
