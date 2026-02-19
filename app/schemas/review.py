@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
-from uuid import UUID
+from typing import Optional, Union
 from datetime import datetime
 
 class ReviewBase(BaseModel):
@@ -17,10 +16,16 @@ class ReviewUpdate(BaseModel):
     mood: Optional[str] = None
 
 class ReviewOut(ReviewBase):
-    id: UUID
-    book_id: UUID
-    user_id: UUID
-    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+    
+    review_id: str
+    book_id: Union[str, int]
+    user_id: str
 
-    class Config:
-        model_config = ConfigDict(from_attributes=True)
+    rating: int
+    title: Optional[str] = None
+    body: Optional[str] = None
+
+    created_at: datetime
+    updated_at: datetime
+        

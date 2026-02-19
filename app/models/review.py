@@ -1,6 +1,5 @@
 from datetime import datetime
 import uuid
-from uuid import UUID as PyUUID
 
 from sqlalchemy import (
     Column,
@@ -13,7 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
 )
-from sqlalchemy.dialects.postgresql import UUID
+
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -22,6 +21,9 @@ from pydantic import BaseModel, ConfigDict
 from app.db.database import Base
 from app.models.book import Book
 from app.models.user import User  
+
+def new_uuid():
+    return str(uuid.uuid4())
 
 class Review(Base):
     __tablename__ = "reviews"
@@ -36,24 +38,11 @@ class Review(Base):
         Index("ix_reviews_user_id", "user_id"),
     )
 
-    review_id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        index=True,
-    )
+    review_id = Column(String, primary_key=True, default=new_uuid, index=True)
 
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("user.user_id"),  
-        nullable=False,
-    )
+    user_id = Column(String, ForeignKey("user.user_id"), nullable=False)
 
-    book_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("book.book_id"),  
-        nullable=False,
-    )
+    book_id = Column(String, ForeignKey("book.book_id"), nullable=False)
 
     rating = Column(Integer, nullable=False)
     title = Column(String(255), nullable=True)
@@ -87,8 +76,8 @@ class ReviewUpdate(BaseModel):
 class ReviewResponse(ReviewBase):
     model_config = ConfigDict(from_attributes=True)
 
-    review_id: PyUUID
-    user_id: PyUUID
-    book_id: PyUUID
+    review_id: str
+    user_id: str
+    book_id: str
     created_at: datetime
     updated_at: datetime
