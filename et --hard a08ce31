@@ -1,0 +1,144 @@
+*   [33m3f828cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/review[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge pull request #25 from Gregoryw23/feature/hotfix_bookshelf
+[31m|[m[32m\[m  
+[31m|[m * [33m6ab5e17[m[33m ([m[1;31morigin/feature/hotfix_bookshelf[m[33m)[m fix: implement bookshelf service class, fix router imports, handle current_user dict
+[31m|[m[31m/[m  
+* [33md5b8775[m[33m ([m[1;31morigin/feature/hotfix_books[m[33m)[m chore: commit sqlite database file
+* [33ma08ce31[m fix: align book schema, service, and route with SQLAlchemy model
+*   [33m54a6f24[m Merge pull request #24 from Gregoryw23/hotfix
+[33m|[m[34m\[m  
+[33m|[m * [33m142b5d1[m Fix bugs for Authentication Feature
+[33m|[m[33m/[m  
+*   [33m03838ad[m Merge pull request #23 from Gregoryw23/hotfix
+[35m|[m[36m\[m  
+[35m|[m * [33mf3a51f3[m Refactor user model and registration response schema for improved datetime handling and user identification
+[35m|[m * [33m823afe1[m Remove unused password_reset import and UserProfile relationship
+[35m|[m[35m/[m  
+*   [33mcda5640[m Merge pull request #22 from Gregoryw23/hotfix
+[1;31m|[m[1;32m\[m  
+[1;31m|[m * [33m5d98654[m Remove PasswordResetToken model
+[1;31m|[m[1;31m/[m  
+*   [33m8b1038b[m Merge pull request #21 from Gregoryw23/feature/jwt-auth-rbac
+[1;33m|[m[1;34m\[m  
+[1;33m|[m *   [33mfc1aa6b[m Resolve merge conflicts and remove pycache files
+[1;33m|[m [1;35m|[m[1;33m\[m  
+[1;33m|[m [1;35m|[m[1;33m/[m  
+[1;33m|[m[1;33m/[m[1;35m|[m   
+* [1;35m|[m [33m0695d21[m feat(chroma): Implement robust LLM provider selection and fix issues
+* [1;35m|[m [33mc75059c[m git: Untrack local database files
+* [1;35m|[m [33m6f14501[m fix: Database model relationships and data loading script updates
+* [1;35m|[m [33m67e208c[m refactor: Resolve circular import by orchestrating ChromaDB sync in ChromaService
+* [1;35m|[m [33m38b6a15[m feat: Implement initial ChromaDB search functionality with route integration and service setup
+* [1;35m|[m   [33m90c42d2[m Merge pull request #20 from Gregoryw23/hotfix/user_profile
+[31m|[m[32m\[m [1;35m\[m  
+[31m|[m * [1;35m|[m [33mc279621[m fix: establish relationships between User and UserProfile models
+[31m|[m[31m/[m [1;35m/[m  
+* [1;35m|[m   [33m6d43c6e[m Merge pull request #19 from Gregoryw23/hotfix/book
+[33m|[m[34m\[m [1;35m\[m  
+[33m|[m * [1;35m|[m [33m0c90202[m fix: update environment variables and enhance book model relationships
+[33m|[m[33m/[m [1;35m/[m  
+* [1;35m|[m   [33mc131737[m Merge pull request #18 from Gregoryw23/hotfix
+[35m|[m[36m\[m [1;35m\[m  
+[35m|[m * [1;35m|[m [33m8caaab1[m Refactor code structure for improved readability and maintainability
+* [36m|[m [1;35m|[m   [33m0b20e8e[m Merge pull request #17 from Gregoryw23/feature/bookCRUD
+[36m|[m[1;32m\[m [36m\[m [1;35m\[m  
+[36m|[m [1;32m|[m[36m/[m [1;35m/[m  
+[36m|[m[36m/[m[1;32m|[m [1;35m|[m   
+[36m|[m * [1;35m|[m [33m009f7c2[m[33m ([m[1;31morigin/feature/bookCRUD[m[33m)[m docs: add books data loading guide for team
+[36m|[m * [1;35m|[m [33m9817b09[m feat: add books data loading from CSV with genre support
+[36m|[m[36m/[m [1;35m/[m  
+* [1;35m|[m   [33m0e5eabb[m Merge pull request #16 from Gregoryw23/feature/books-endpoints
+[1;33m|[m[1;34m\[m [1;35m\[m  
+[1;33m|[m * [1;35m\[m   [33mebf445f[m Resolve merge conflicts
+[1;33m|[m [1;35m|[m[1;33m\[m [1;35m\[m  
+[1;33m|[m [1;35m|[m[1;33m/[m [1;35m/[m  
+[1;33m|[m[1;33m/[m[1;35m|[m [1;35m|[m   
+* [1;35m|[m [1;35m|[m [33mca41817[m register user profile router in main app
+* [1;35m|[m [1;35m|[m [33me1e70ed[m implement user profile endpoints with flexible delete options
+* [1;35m|[m [1;35m|[m [33ma313519[m add user profile database model and pydantic schemas
+* [1;35m|[m [1;35m|[m [33me8de655[m Add ollama==0.6.1 to requirements.txt
+* [1;35m|[m [1;35m|[m [33mce03f8d[m Reintroduce requirements.txt from main after rebase
+* [1;35m|[m [1;35m|[m [33m8a23950[m Add comprehensive .gitignore file to exclude unnecessary files and directories
+* [1;35m|[m [1;35m|[m [33m01ccdf9[m Register new ChromaDB routes with main FastAPI application. Then enhance FastAPI initialization with metadata.
+* [1;35m|[m [1;35m|[m [33m74260c7[m Implement ChromaDB API routes for adding, searching, summarizing, and deleting books - POST /chroma/: Add a book to ChromaDB for indexing (for internal/administrative use, not direct end-user interaction). - GET /chroma/similarities: Search for similar books and return raw results with distance scores. - GET /chroma/summary: Search for similar books and return an AI-enhanced natural language summary. - DELETE /chroma/{book_id}:
+* [1;35m|[m [1;35m|[m [33mfc101fa[m 1. Created directory `ShelfAware/chromadb/` to store ChromaDB's persistent data. 2. Add new service class to handle all interactions with ChromaDB using local Ollama models instead of OpenAI - Use OllamaEmbeddingFunction for embedding generation. - Use ollama.Client for generate_natural_language_response. - Ensure Ollama server is running locally and required models are pulled. - The collection will be named "books". - The add_book method's parameter for the book abstract has been aligned to abstract for consistency with ShelfAware.app.models.Book.
+* [1;35m|[m [1;35m|[m [33mbf0b91c[m Add ChromaBookInfo pydantic schema for book information handling in order to facilitate similarity search reflecting the essential attributes of `ShelfAware.app.models.Book` - id: str, - title: str, - abstract: str
+* [1;35m|[m [1;35m|[m [33m3f10ea6[m Add Ollama setup documentation for local semantic search
+* [1;35m|[m [1;35m|[m [33m26b4120[m WIP: Stashed changes re-applied to main after rebase attempt
+* [1;35m|[m [1;35m|[m   [33mf50da49[m Merge pull request #14 from Gregoryw23/feature/jwt-auth-rbac
+[31m|[m[32m\[m [1;35m\[m [1;35m\[m  
+[31m|[m [32m|[m * [1;35m|[m [33m5ee64c6[m Implement Bookshelf Management API
+[31m|[m [32m|[m [32m|[m * [33m7fb776f[m Integrate Cognito authentication and add login/register response schemas
+[31m|[m [32m|[m [32m|[m * [33m0c04b69[m Refactor user model and authentication flow to integrate AWS Cognito for user registration and management
+[31m|[m [32m|[m [32m|[m[32m/[m  
+[31m|[m [32m|[m[32m/[m[32m|[m   
+[31m|[m * [32m|[m   [33ma92433d[m Merge branch 'main' into feature/jwt-auth-rbac
+[31m|[m [32m|[m[31m\[m [32m\[m  
+[31m|[m [32m|[m[31m/[m [32m/[m  
+[31m|[m[31m/[m[32m|[m [32m/[m   
+[31m|[m [32m|[m[32m/[m    
+* [32m|[m   [33m2188e5c[m Merge pull request #13 from Gregoryw23/feature/bookshelf-api
+[35m|[m[36m\[m [32m\[m  
+[35m|[m * [32m\[m   [33m261e379[m[33m ([m[1;31morigin/feature/bookshelf-api[m[33m)[m Merge branch 'main' into feature/bookshelf-api
+[35m|[m [1;31m|[m[35m\[m [32m\[m  
+[35m|[m [1;31m|[m[35m/[m [32m/[m  
+[35m|[m[35m/[m[1;31m|[m [32m|[m   
+* [1;31m|[m [32m|[m   [33m4bc925e[m Merge pull request #12 from Gregoryw23/feature/jwt-auth-rbac
+[1;33m|[m[1;34m\[m [1;31m\[m [32m\[m  
+[1;33m|[m [1;34m|[m * [32m|[m [33mf900d9c[m feat: implement bookshelf MVP endpoints and service layer
+[1;33m|[m [1;34m|[m * [32m|[m [33mf706596[m feat: add bookshelf CRUD endpoints
+[1;33m|[m [1;34m|[m [1;34m|[m * [33mb421b84[m Implement AWS Cognito integration for user authentication and role management
+[1;33m|[m [1;34m|[m [1;34m|[m[1;34m/[m  
+[1;33m|[m [1;34m|[m[1;34m/[m[1;34m|[m   
+[1;33m|[m * [1;34m|[m [33mf701439[m Implement JWT authentication and role-based access control for admin routes
+[1;33m|[m[1;33m/[m [1;34m/[m  
+* [1;34m|[m   [33mf071bb6[m Merge pull request #11 from Gregoryw23/hotfix/login_endpoint
+[1;34m|[m[1;36m\[m [1;34m\[m  
+[1;34m|[m [1;36m|[m[1;34m/[m  
+[1;34m|[m[1;34m/[m[1;36m|[m   
+[1;34m|[m * [33md17eb49[m Implement login endpoint with password verification and update requirements
+[1;34m|[m[1;34m/[m  
+*   [33mae0205a[m Merge pull request #10 from Gregoryw23/feature/forgot_password
+[31m|[m[32m\[m  
+[31m|[m * [33m16c85d5[m Implement forgot password and reset password functionality with associated models and schemas
+[31m|[m[31m/[m  
+*   [33m544c432[m Merge pull request #9 from Gregoryw23/feature/user_login
+[33m|[m[34m\[m  
+[33m|[m * [33m7cc1614[m Implement user registration endpoint with email normalization and password hashing
+[33m|[m[33m/[m  
+*   [33m4b3fbe9[m Merge pull request #8 from Gregoryw23/feature/user_login
+[35m|[m[36m\[m  
+[35m|[m * [33m87d75fe[m Add user authentication models and password security features
+[35m|[m[35m/[m  
+* [33mf316b2f[m update user profile
+*   [33mfdd7f31[m Merge pull request #7 from Gregoryw23/feature/review
+[1;31m|[m[1;32m\[m  
+[1;31m|[m * [33m09f2916[m[33m ([m[1;31morigin/feature/review[m[33m)[m revised review.py and review_service.py
+[1;31m|[m[1;31m/[m  
+*   [33maa7f08a[m[33m ([m[1;32mmain[m[33m)[m Merge pull request #6 from Gregoryw23/feature/bookCRUD
+[1;33m|[m[1;34m\[m  
+[1;33m|[m * [33m353d0a2[m Updated Code with Readme of new features and requirements.txt Also added new Cron job codes for daily summarising of user generated synopsis to populate books.py
+[1;33m|[m * [33mc43f7f8[m Updating models with core tables: authors, genres, moods, reviews, and book_author relationships.
+* [1;34m|[m [33md618850[m Merge pull request #5 from Gregoryw23/feature/bookCRUD
+[1;35m|[m[1;34m\[m[1;34m|[m 
+[1;35m|[m * [33m36f3bc8[m Update to remove schema to stick to what is taught
+* [1;36m|[m [33mee66cfd[m Merge pull request #4 from Gregoryw23/feature/bookCRUD
+[31m|[m[1;36m\[m[1;36m|[m 
+[31m|[m * [33m00e4d84[m Create books DB CRUD for admin add and update books - Create Schema folder for type casting - create book_services.py for CRUD operations
+* [32m|[m [33mde1dc4b[m Merge pull request #3 from Gregoryw23/feature/bookCRUD
+[33m|[m[32m\[m[32m|[m 
+[33m|[m * [33mc5497b9[m Update branch with added SSQLachemy DB
+[33m|[m[33m/[m  
+* [33mc7bfad8[m Update requirements txt
+*   [33m00d638b[m Merge pull request #2 from Gregoryw23/feature/db-init
+[35m|[m[36m\[m  
+[35m|[m * [33m0c75601[m[33m ([m[1;31morigin/feature/db-init[m[33m)[m feat(db): add book and bookshelf models with alembic migration
+[35m|[m[35m/[m  
+*   [33m55ded32[m Merge pull request #1 from Gregoryw23/feature/user_login
+[1;31m|[m[1;32m\[m  
+[1;31m|[m * [33ma09f8fb[m[33m ([m[1;31morigin/feature/user_login[m[33m)[m Update requirements for login
+[1;31m|[m * [33mfcd12a0[m Initialize database tables on app startup
+[1;31m|[m * [33mdcf62ed[m Add user model
+[1;31m|[m * [33mbb8f065[m Add database setup
+[1;31m|[m[1;31m/[m  
+* [33mee424b9[m Add db, models, and routes structure
+* [33m6d31d66[m Initial project setup

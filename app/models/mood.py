@@ -1,10 +1,11 @@
-import uuid, pydantic
-from datetime import datetime, date
 from sqlalchemy import Column, String, DateTime, Integer, Date, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from datetime import date
+import uuid
+
 from app.db.database import Base
 
-# models/mood.py
 class Mood(Base):
     __tablename__ = "moods"
 
