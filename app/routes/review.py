@@ -2,7 +2,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from uuid import UUID
 
 from app.db.database import get_db  # DB session dependency
 from app.services.review_service import ReviewService
@@ -18,8 +17,8 @@ def get_review_service(db: Session = Depends(get_db)) -> ReviewService:
 # --- Create a review ---
 @router.post("/", response_model=ReviewOut)
 def create_review(
-    book_id: UUID,
-    user_id: UUID,
+    book_id: str,
+    user_id: str,
     review_data: ReviewCreate,
     service: ReviewService = Depends(get_review_service)
 ):
@@ -33,7 +32,7 @@ def create_review(
 # --- Get all reviews for a specific book (paginated) ---
 @router.get("/book/{book_id}", response_model=List[ReviewOut])
 def get_reviews_for_book(
-    book_id: UUID,
+    book_id: str,
     limit: int = 20,
     offset: int = 0,
     newest_first: bool = True,
@@ -53,7 +52,7 @@ def get_reviews_for_book(
 # --- Get a single review by ID ---
 @router.get("/{review_id}", response_model=ReviewOut)
 def get_review(
-    review_id: UUID,
+    review_id: str,
     service: ReviewService = Depends(get_review_service)
 ):
     """
@@ -65,8 +64,8 @@ def get_review(
 # --- Update a review ---
 @router.put("/{review_id}", response_model=ReviewOut)
 def update_review(
-    review_id: UUID,
-    acting_user_id: UUID,
+    review_id: str,
+    acting_user_id: str,
     review_data: ReviewUpdate,
     service: ReviewService = Depends(get_review_service)
 ):
@@ -84,8 +83,8 @@ def update_review(
 # --- Delete a review ---
 @router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_review(
-    review_id: UUID,
-    acting_user_id: UUID,
+    review_id: str,
+    acting_user_id: str,
     service: ReviewService = Depends(get_review_service)
 ):
     """

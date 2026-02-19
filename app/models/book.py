@@ -4,10 +4,13 @@ from sqlalchemy import Column, String, DateTime, Integer, Date
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
+def new_uuid():
+    return str(uuid.uuid4())
+
 class Book(Base):
     __tablename__ = "book"
 
-    book_id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    book_id = Column(String, primary_key=True, default=new_uuid)
     title = Column(String, nullable=False)
 
     subtitle = Column(String, nullable=True)

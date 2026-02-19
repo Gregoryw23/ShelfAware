@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import Sequence
-from uuid import UUID
 from datetime import date
 
 from fastapi import HTTPException, status
@@ -21,28 +20,37 @@ class ReviewService:
         self.db = db
 
     # --- Internal Helpers ---
-    def _ensure_book_exists(self, book_id: UUID) -> None:
+    def _ensure_book_exists(self, book_id: str) -> None:
         exists = self.db.scalar(select(Book.book_id).where(Book.book_id == book_id))
         if not exists:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
 
-    def _ensure_user_exists(self, user_id: UUID) -> None:
+    def _ensure_user_exists(self, user_id: str) -> None:
         exists = self.db.scalar(select(User.user_id).where(User.user_id == user_id))
         if not exists:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    def _get_review_or_404(self, review_id: UUID) -> Review:
+    def _get_review_or_404(self, review_id: str) -> Review:
         review = self.db.get(Review, review_id)
         if not review:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
         return review
 
     # --- Commands ---
-    def add_review(self, *, book_id: UUID, user_id: UUID, review_data: ReviewCreate) -> Review:
+    def add_review(self, *, book_id: str, user_id: str, review_data: ReviewCreate) -> Review:
         self._ensure_book_exists(book_id)
         self._ensure_user_exists(user_id)
 
-        payload = review_data.model_dump()
+        payload = review_data.model_dump(exclude_unset=True)
+        
+        # ---- map / remove fields that are NOT columns on Review ----
+        mood_text = payload.pop("mood", None)          # remove mood (not a Review column)
+        comment_text = payload.pop("comment", None)    # remove comment (not a Review column)    
+        
+        # if client sends "comment", store it in Review.body
+        if comment_text is not None and payload.get("body") is None:
+            payload["body"] = comment_text
+
         rating = payload.get("rating")
         if rating is None or not (1 <= rating <= 5):
             raise HTTPException(
@@ -71,7 +79,7 @@ class ReviewService:
                 detail="You have already reviewed this book."
             ) from e
 
-    def update_review(self, review_id: UUID, acting_user_id: UUID, review_data: ReviewUpdate) -> Review:
+    def update_review(self, review_id: str, acting_user_id: str, review_data: ReviewUpdate) -> Review:
         self._ensure_user_exists(acting_user_id)
 
         review = self._get_review_or_404(review_id)
@@ -80,6 +88,12 @@ class ReviewService:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to edit this review")
 
         update_data = review_data.model_dump(exclude_unset=True)
+
+        mood_text = update_data.pop("mood", None)
+        comment_text = update_data.pop("comment", None)
+
+        if comment_text is not None and "body" not in update_data:
+            update_data["body"] = comment_text
 
         # Validate rating if provided
         if "rating" in update_data and update_data["rating"] is not None:
@@ -107,7 +121,7 @@ class ReviewService:
         self.db.refresh(review)
         return review
 
-    def delete_review(self, review_id: UUID, acting_user_id: UUID) -> None:
+    def delete_review(self, review_id: str, acting_user_id: str) -> None:
         self._ensure_user_exists(acting_user_id)
 
         review = self._get_review_or_404(review_id)
@@ -120,7 +134,7 @@ class ReviewService:
     # --- Queries ---
     def get_reviews_by_book_id(
         self,
-        book_id: UUID,
+        book_id: str,
         limit: int = 20,
         offset: int = 0,
         newest_first: bool = True,
