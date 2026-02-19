@@ -8,10 +8,7 @@ from app.db.database import get_db
 from app.models.user_profile import UserProfile
 from app.schemas.user_profile import UserProfileCreate, UserProfileOut
 
-router = APIRouter(
-    prefix="/user_profile",
-    tags=["UserProfile"]
-)
+router = APIRouter()
 
 # Hardcoded User ID for development (Default)
 TEST_USER_ID = "test-user-id-001"

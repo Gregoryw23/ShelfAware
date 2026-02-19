@@ -8,10 +8,7 @@ from app.db.database import get_db  # DB session dependency
 from app.services.review_service import ReviewService
 from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewOut  # Pydantic schemas
 
-router = APIRouter(
-    prefix="/reviews",
-    tags=["reviews"]
-)
+router = APIRouter()
 
 # --- Dependency to get ReviewService ---
 def get_review_service(db: Session = Depends(get_db)) -> ReviewService:
