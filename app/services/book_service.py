@@ -1,4 +1,5 @@
 #Code 2
+from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.book import Book
 from app.schemas.book import BookCreate, BookUpdate
@@ -7,8 +8,11 @@ class BookService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_books(self):
-        return self.db.query(Book).all()
+    def get_books(self, limit: Optional[int] = None):
+        query = self.db.query(Book)
+        if limit is not None:
+            query = query.limit(limit)
+        return query.all()
 
     def get_book(self, book_id: str):
         return self.db.query(Book).filter(Book.book_id == book_id).first()
