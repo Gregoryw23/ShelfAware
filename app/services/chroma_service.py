@@ -16,8 +16,11 @@ from ollama import Client as OllamaClient
 
 load_dotenv()
 
+from app.exceptions import ChromaEmbeddingConflictError # Restored import
+
+
 class ChromaService:
-    def __init__(self, llm_provider_override: Optional[Literal["OPENAI", "OLLAMA"]] = None): # Removed use_persisted_llm_provider parameter
+    def __init__(self, llm_provider_override: Optional[Literal["OPENAI", "OLLAMA"]] = None, is_retry: bool = False): # Removed use_persisted_llm_provider parameter
         # Initialize ChromaDB Persistent Client
         self.client = chromadb.PersistentClient(path="./chromadb")
 
@@ -26,7 +29,9 @@ class ChromaService:
         
         # This will store the initially requested llm_provider, which might be None
         requested_llm_provider = self.llm_provider
-
+        
+        self._initialize_llm_clients() # Moved this call here
+        
         try:
             # Initialize or create the "books" collection with the selected embedding function
             self.collection = self.client.get_or_create_collection(
@@ -37,13 +42,22 @@ class ChromaService:
             # Check if the error is specifically an embedding function conflict
             if "Embedding function conflict" in str(e):
                 logging.warning(f"ChromaDB collection 'books' embedding function conflict detected: {e}")
-                logging.info("Deleting existing 'books' collection and re-creating with the new embedding function.")
-                self.client.delete_collection(name="books")
-                # Retry creating the collection with the new embedding function
-                self.collection = self.client.get_or_create_collection(
-                    name="books",
-                    embedding_function=self.embedding_function
-                )
+                
+                # Extract 'persisted' LLM provider from the error message
+                match = re.search(r"persisted: (\w+)", str(e))
+                persisted_llm_provider = match.group(1).upper() if match else "UNKNOWN"
+
+                if is_retry:
+                    # If we are already retrying, and it still conflicts, something is fundamentally wrong
+                    logging.error(f"ChromaDB embedding function conflict persisted even after retry with '{persisted_llm_provider}'. Re-raising original error.")
+                    raise e
+                else:
+                    # On first attempt, raise custom exception to signal retry with persisted provider
+                    logging.info(f"Raising ChromaEmbeddingConflictError to trigger retry with persisted provider: {persisted_llm_provider}")
+                    raise ChromaEmbeddingConflictError(
+                        detail=f"Embedding function conflict: currently using '{self.llm_provider}', but collection was created with '{persisted_llm_provider}'.",
+                        persisted_llm_provider=persisted_llm_provider
+                    )
             else:
                 # Re-raise if it's a different ValueError
                 raise
@@ -188,12 +202,16 @@ class ChromaService:
         final_ids = final_items.get('ids', [])
         logging.info(f"Collection '{collection_name}' has {len(final_ids)} items after deletion. IDs: {final_ids}")
 
-    def sync_books(self, limit: Optional[int] = None) -> dict: # Modified return type
+    def sync_books(self, limit: Optional[int] = None) -> dict:
         """
         Synchronizes books from the main database to ChromaDB.
         Handles additions, updates, and deletions to ensure ChromaDB
         reflects the current state of the main database.
         Returns a dictionary with counts of upserted and deleted books.
+        
+        :param limit: Optional. If provided, limits the number of books fetched from the main database.
+                      Note: Without an explicit ORDER BY clause in the underlying query,
+                      the selection of books when a limit is applied is not deterministic.
         """
         logging.info(f"Starting ChromaDB synchronization with limit: {limit if limit is not None else 'No limit'}...")
         db = next(get_db()) # Get a DB session

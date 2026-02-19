@@ -7,6 +7,7 @@ from app.dependencies.auth import get_current_user
 from app.services.chroma_service import ChromaService
 from app.schemas.chroma_book import ChromaBookInfo
 from typing import Optional, Literal
+from app.exceptions import ChromaEmbeddingConflictError # New import
 
 
 router = APIRouter()
@@ -32,7 +33,26 @@ def get_chroma_service(
     # Otherwise, fall back to the instance-level determination.
     provider_to_use = llm_provider or llm_provider_for_instance
 
-    return ChromaService(llm_provider_override=provider_to_use)
+    try:
+        # First attempt to get ChromaService
+        return ChromaService(llm_provider_override=provider_to_use)
+    except ChromaEmbeddingConflictError as e:
+        logging.warning(f"ChromaDB embedding function conflict detected. Attempting retry with persisted provider: {e.persisted_llm_provider}")
+        try:
+            # Second attempt: retry with the persisted LLM provider
+            return ChromaService(llm_provider_override=e.persisted_llm_provider, is_retry=True)
+        except Exception as retry_e:
+            logging.error(f"Failed to initialize ChromaService even after retrying with persisted provider '{e.persisted_llm_provider}': {retry_e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to initialize ChromaDB service: Embedding function conflict could not be resolved. Original: {str(e)}. Retry error: {str(retry_e)}"
+            )
+    except Exception as e:
+        logging.error(f"Failed to initialize ChromaService: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initialize ChromaDB service: {str(e)}"
+        )
 
 
 @router.post("/sync-from-db", status_code=status.HTTP_200_OK)
