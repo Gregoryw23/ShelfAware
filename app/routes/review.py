@@ -1,13 +1,16 @@
-# app/routes/review.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from app.db.database import get_db  # DB session dependency
+from app.db.database import get_db
 from app.services.review_service import ReviewService
-from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewOut  # Pydantic schemas
+from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewOut
+from app.dependencies.auth import get_current_user  
+from app.models.user import User  
+
 
 router = APIRouter()
+
 
 # --- Dependency to get ReviewService ---
 def get_review_service(db: Session = Depends(get_db)) -> ReviewService:
@@ -15,18 +18,23 @@ def get_review_service(db: Session = Depends(get_db)) -> ReviewService:
 
 
 # --- Create a review ---
-@router.post("/", response_model=ReviewOut)
+@router.post("/books/{book_id}", response_model=ReviewOut)
 def create_review(
     book_id: str,
     user_id: str,
     review_data: ReviewCreate,
+    current_user: User = Depends(get_current_user),  # from auth
     service: ReviewService = Depends(get_review_service)
 ):
     """
     Create a new review for a book.
-    Optional: user can submit a 'mood' as free text via review_data.mood.
+    User is derived from authentication token.
     """
-    return service.add_review(book_id=book_id, user_id=user_id, review_data=review_data)
+    return service.add_review(
+        book_id=book_id,
+        user_id=current_user.id,  # injected securely
+        review_data=review_data
+    )
 
 
 # --- Get all reviews for a specific book (paginated) ---
@@ -67,15 +75,15 @@ def update_review(
     review_id: str,
     acting_user_id: str,
     review_data: ReviewUpdate,
+    current_user: User = Depends(get_current_user),  
     service: ReviewService = Depends(get_review_service)
 ):
     """
-    Update a review. Only the user who created the review can update it.
-    Optional: user can update their mood via review_data.mood.
+    Update a review. Only the creator can update it.
     """
     return service.update_review(
         review_id=review_id,
-        acting_user_id=acting_user_id,
+        acting_user_id=current_user.id, 
         review_data=review_data
     )
 
@@ -88,9 +96,10 @@ def delete_review(
     service: ReviewService = Depends(get_review_service)
 ):
     """
-    Delete a review. Only the user who created the review can delete it.
+    Delete a review. Only the creator can delete it.
     """
-    service.delete_review(review_id=review_id, acting_user_id=acting_user_id)
+    service.delete_review(
+        review_id=review_id,
+        acting_user_id=current_user.id  
+    )
     return None
-
-
