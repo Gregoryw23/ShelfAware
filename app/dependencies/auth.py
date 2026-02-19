@@ -1,5 +1,9 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+
+from app.db.database import get_db
+from app.models.user import User
 from app.services.cognito_service import CognitoService
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -24,3 +28,18 @@ def get_current_user(
         )
 
     return claims
+
+def get_current_db_user(
+    db: Session = Depends(get_db),
+    claims: dict = Depends(get_current_user),
+) -> User:
+    sub = claims.get("sub")
+
+    if not sub:
+        raise HTTPException(status_code=401, detail="Invalid token: missing sub")
+
+    user = db.query(User).filter(User.cognito_sub == sub).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found for this token")
+
+    return user
