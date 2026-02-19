@@ -16,6 +16,8 @@ from app.routes.admin import router as admin_router
 from app.routes.bookshelf import router as bookshelf_router
 from app.routes import chroma  # ChromaDB search routes
 from app.routes import user_profile
+from app.routes import review
+
 
 # Configure logging
 logging.basicConfig(
@@ -40,7 +42,7 @@ app.include_router(books.router, prefix="/books", tags=["Books"])
 app.include_router(bookshelf_router, prefix="/bookshelf", tags=["Bookshelf"])
 app.include_router(chroma.router, prefix="/books/search", tags=["Books Search"])
 app.include_router(user_profile.router, prefix="/user-profile", tags=["User Profile"])
-
+app.include_router(review.router, prefix="/reviews", tags=["Reviews"])
 
 # Initialize and start synopsis scheduler on startup
 @app.on_event("startup")
