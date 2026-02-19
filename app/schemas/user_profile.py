@@ -1,8 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 
-
-# Base model with rich examples for Swagger UI "Try it out" autofill
+# Base model with rich examples for Swagger UI
 class UserProfileBase(BaseModel):
     display_name: str = Field(
         ...,
@@ -35,7 +34,7 @@ class UserProfileBase(BaseModel):
         examples=['["Science Fiction", "Mystery", "History"]']
     )
 
-# Patch model for updates (All fields optional for partial updates)
+# Patch model for updates
 class UserProfileUpdate(BaseModel):
     display_name: Optional[str] = None
     profile_photo_url: Optional[str] = None
@@ -43,14 +42,25 @@ class UserProfileUpdate(BaseModel):
     location: Optional[str] = None
     favorite_genres_json: Optional[str] = None
 
-
-# POST request model (Defines the input box structure)
+# POST request model
 class UserProfileCreate(UserProfileBase):
     pass
 
-
-# Response model (Includes user_id in the output)
+# Response model for the owner (includes user_id)
 class UserProfileOut(UserProfileBase):
     user_id: str
+    model_config = ConfigDict(from_attributes=True)
+
+# --- NEW: Response model for public view (Hides user_id) ---
+class UserProfilePublic(BaseModel):
+    display_name: str
+    profile_photo_url: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+    favorite_genres_json: Optional[str] = None
+
+    # New calculated fields for Greg's requirements
+    profile_completeness: int  # Percentage (0-100)
+    member_since: str         # Formatted date string (e.g., "February 2026")
 
     model_config = ConfigDict(from_attributes=True)
