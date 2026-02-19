@@ -7,6 +7,8 @@ from app.db.database import Base
 
 from sqlalchemy import text  # make sure this import exists
 
+from sqlalchemy.orm import relationship
+
 status = Column(String, nullable=False, server_default=text("'active'"))
 
 
@@ -19,8 +21,13 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
 
+    # Relationship to Mood model
+    moods = relationship("Mood", back_populates="user")  # Ensure this line is present
+
     status = Column(String, nullable=False, server_default=text("'active'"))
     #status = Column(String, nullable=False, server_default=text("active"))
     created_at = Column(DateTime, nullable=False, default=datetime)
     last_login = Column(DateTime, nullable=True)
     deleted_at = Column(DateTime, nullable=True)
+
+    

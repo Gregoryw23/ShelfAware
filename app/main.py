@@ -3,6 +3,10 @@ import os
 from fastapi import FastAPI
 from app.db.database import engine, Base
 from app.services.synopsis_scheduler import SynopsisScheduler
+from app.models.book import Book 
+from app.routes import review
+from app.models.user import User
+
 
 # Configure logging
 logging.basicConfig(
@@ -15,6 +19,9 @@ logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+# Register review route
+app.include_router(review.router)
 
 # Initialize and start synopsis scheduler on startup
 @app.on_event("startup")

@@ -20,7 +20,8 @@ from sqlalchemy.sql import func
 from pydantic import BaseModel, ConfigDict
 
 from app.db.database import Base
-
+from app.models.book import Book
+from app.models.user import User  
 
 class Review(Base):
     __tablename__ = "reviews"
@@ -44,13 +45,13 @@ class Review(Base):
 
     user_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey("user.user_id"),  
         nullable=False,
     )
 
     book_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("books.book_id", ondelete="CASCADE"),
+        ForeignKey("book.book_id"),  
         nullable=False,
     )
 
@@ -64,8 +65,7 @@ class Review(Base):
 
     # Relationships
     book = relationship("Book", back_populates="reviews")
-    user = relationship("User", back_populates="reviews")
-
+    user = relationship("User", back_populates="reviews")  
 
 # --------------------
 # Pydantic Schemas
@@ -76,16 +76,13 @@ class ReviewBase(BaseModel):
     title: str | None = None
     body: str | None = None
 
-
 class ReviewCreate(ReviewBase):
     pass
-
 
 class ReviewUpdate(BaseModel):
     rating: int | None = None
     title: str | None = None
     body: str | None = None
-
 
 class ReviewResponse(ReviewBase):
     model_config = ConfigDict(from_attributes=True)
