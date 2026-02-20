@@ -18,6 +18,8 @@ class Book(Base):
 
     abstract = Column(String, nullable=True)
     CommunitySynopsis = Column(String, nullable=True)
+    # JSON/stringified emotion profile created from reviews
+    emotion_profile = Column(String, nullable=True)
 
     page_count = Column(Integer, nullable=True)
     published_date = Column(Date, nullable=True)

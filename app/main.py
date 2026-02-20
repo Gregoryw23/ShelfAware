@@ -1,7 +1,7 @@
 #Code 3
 import logging
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 
 from app.db.database import engine, Base
 
@@ -17,6 +17,7 @@ from app.routes.bookshelf import router as bookshelf_router
 from app.routes import chroma  # ChromaDB search routes
 from app.routes import user_profile
 from app.routes import review
+from app.routes import recommendation_routes
 
 
 # Configure logging
@@ -43,6 +44,11 @@ app.include_router(bookshelf_router, prefix="/bookshelf", tags=["Bookshelf"])
 app.include_router(chroma.router, prefix="/books/search", tags=["Books Search"])
 app.include_router(user_profile.router, prefix="/user-profile", tags=["User Profile"])
 app.include_router(review.router, prefix="/reviews", tags=["Reviews"])
+app.include_router(
+    recommendation_routes.router,
+    prefix="/api",
+    tags=["Recommendations"],
+)
 
 # Initialize and start synopsis scheduler on startup
 @app.on_event("startup")
@@ -90,6 +96,13 @@ def trigger_manual_sync():
     except Exception as e:
         logger.error(f"Manual sync failed: {str(e)}")
         return {"status": "error", "message": str(e)}
+
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Return no content for favicon requests to avoid browser 404 noise."""
+    return Response(status_code=204)
 
 
 

@@ -1,3 +1,6 @@
+from app.services.mood_recommendation.preprocessing import TextPreprocessor
+
+
 class EmotionExtractor:
     def __init__(self, emotion_lexicon):
         self.emotion_lexicon = emotion_lexicon
@@ -84,26 +87,141 @@ class EmotionExtractor:
             'num_reviews': total_reviews
         }
 
+
+# Define emotion lexicon for emotion extraction
+emotion_lexicon = {
+    'happy': ['happy', 'joy', 'joyful', 'delighted', 'cheerful', 'wonderful', 'amazing', 'fantastic', 'awesome', 'great', 'brilliant', 'excellent', 'love', 'loved', 'superb', 'outstanding', 'terrific', 'marvelous', 'splendid', 'delightful'],
+    'sad': ['sad', 'sadness', 'depressed', 'depressing', 'unhappy', 'tearful', 'heartbroken', 'miserable', 'disappointing', 'disappointed', 'dull', 'boring', 'drab', 'lackluster', 'tedious', 'sluggish'],
+    'angry': ['angry', 'rage', 'furious', 'annoyed', 'frustrated', 'irritated', 'mad', 'hostile', 'awful', 'terrible', 'horrible', 'hate', 'hated', 'despicable'],
+    'excited': ['excited', 'thrilled', 'exhilarated', 'eager', 'enthusiastic', 'energetic', 'pumped', 'awesome', 'incredible', 'unbelievable', 'phenomenal'],
+    'scared': ['scared', 'afraid', 'frightened', 'terrified', 'nervous', 'anxious', 'unsettled', 'frightening', 'chilling', 'spooky', 'creepy', 'unsettling', 'horrifying'],
+    'romantic': ['romantic', 'love', 'loved', 'affectionate', 'tender', 'passionate', 'intimate', 'sweet', 'beautiful', 'gorgeous', 'lovely', 'dreamy', 'swoon'],
+    'suspenseful': ['suspenseful', 'suspense', 'tense', 'tension', 'thrilling', 'cliffhanger', 'gripping', 'heart-pounding', 'breathtaking', 'riveting'],
+    'dark': ['dark', 'grim', 'disturbing', 'haunting', 'sinister', 'mysterious', 'eerie', 'evil', 'twisted', 'corrupt'],
+    'excited': [
+        'excited', 'excitement', 'enthusiastic', 'eager', 'energetic', 'pumped',
+        'thrilling', 'exhilarating', 'electrifying', 'stimulating', 'invigorating',
+        'spirited', 'animated', 'lively', 'dynamic',
+        'awesome', 'incredible', 'unbelievable', 'phenomenal'
+    ],
+    
+    'romantic': [
+        'romantic', 'romance', 'love', 'loving', 'passionate', 'affectionate',
+        'tender', 'sweet', 'charming', 'intimate', 'adoring', 'devoted',
+        'amorous', 'heartfelt', 'caring', 'loving', 'enchanting',
+        'beautiful', 'gorgeous', 'lovely', 'dreamy', 'swoon'
+    ],
+    
+    'hopeful': [
+        'hopeful', 'hope', 'optimistic', 'positive', 'encouraging', 'inspiring',
+        'uplifting', 'promising', 'bright', 'confident', 'assured', 'faith',
+        'expectant', 'aspirational', 'motivated'
+    ],
+    
+    'nostalgic': [
+        'nostalgic', 'nostalgia', 'reminiscent', 'wistful', 'sentimental',
+        'bittersweet', 'longing', 'yearning', 'reflective', 'remembering',
+        'memories', 'past', 'bygone', 'reminisce'
+    ],
+    
+    'peaceful': [
+        'peaceful', 'peace', 'calm', 'calming', 'serene', 'tranquil', 'relaxing',
+        'soothing', 'gentle', 'quiet', 'still', 'restful', 'meditative',
+        'harmonious', 'placid', 'undisturbed'
+    ],
+    
+    'curious': [
+        'curious', 'intriguing', 'mysterious', 'mystery', 'enigmatic', 'puzzling',
+        'fascinating', 'interesting', 'captivating', 'compelling', 'investigative',
+        'inquisitive', 'questioning', 'wondering'
+    ],
+    
+    'tense': [
+        'tense', 'tension', 'suspenseful', 'suspense', 'gripping', 'intense',
+        'thrilling', 'edge', 'nail-biting', 'dramatic', 'climactic', 'stressful',
+        'nerve-wracking', 'anxious', 'uneasy'
+    ],
+    
+    'empowered': [
+        'empowered', 'empowering', 'strong', 'strength', 'powerful', 'brave',
+        'courageous', 'bold', 'confident', 'determined', 'resilient', 'triumphant',
+        'victorious', 'inspiring', 'motivating'
+    ],
+    
+    'lonely': [
+        'lonely', 'loneliness', 'alone', 'isolated', 'solitary', 'abandoned',
+        'forsaken', 'desolate', 'friendless', 'alienated', 'disconnected',
+        'estranged', 'remote', 'detached'
+    ],
+    
+    'grateful': [
+        'grateful', 'gratitude', 'thankful', 'appreciative', 'blessed', 'fortunate',
+        'lucky', 'indebted', 'obliged', 'recognition', 'acknowledgment'
+    ],
+    
+    'confused': [
+        'confused', 'confusion', 'perplexed', 'baffled', 'puzzled', 'bewildered',
+        'disoriented', 'lost', 'uncertain', 'unclear', 'ambiguous', 'complicated',
+        'complex', 'mystified'
+    ],
+    
+    'inspired': [
+        'inspired', 'inspiring', 'inspirational', 'motivating', 'enlightening',
+        'thought-provoking', 'stimulating', 'creative', 'innovative', 'visionary',
+        'imaginative', 'influential'
+    ],
+    
+    'amused': [
+        'amused', 'amusing', 'funny', 'humorous', 'hilarious', 'witty', 'comical',
+        'entertaining', 'laugh', 'laughter', 'joke', 'comedy', 'playful',
+        'lighthearted', 'cheerful'
+    ],
+    
+    'moved': [
+        'moved', 'moving', 'touching', 'emotional', 'poignant', 'heartwarming',
+        'tear-jerker', 'affecting', 'stirring', 'profound', 'deep', 'meaningful',
+        'powerful', 'impactful'
+    ],
+    
+    'adventurous': [
+        'adventurous', 'adventure', 'exciting', 'daring', 'bold', 'thrilling',
+        'epic', 'quest', 'journey', 'exploration', 'expeditionary', 'heroic',
+        'action-packed'
+    ],
+    
+    'reflective': [
+        'reflective', 'contemplative', 'thoughtful', 'introspective', 'meditative',
+        'philosophical', 'deep', 'profound', 'pensive', 'analytical', 'cerebral',
+        'intellectual'
+    ],
+    
+    'dark': [
+        'dark', 'darkness', 'grim', 'bleak', 'sinister', 'ominous', 'foreboding',
+        'menacing', 'disturbing', 'twisted', 'macabre', 'morbid', 'haunting',
+        'eerie', 'unsettling'
+    ],
+    
+    'whimsical': [
+        'whimsical', 'quirky', 'playful', 'fanciful', 'imaginative', 'magical',
+        'enchanting', 'delightful', 'charming', 'lighthearted', 'fantastical',
+        'dreamy', 'fairytale'
+    ],
+    
+    'heartbroken': [
+        'heartbroken', 'heartbreak', 'devastated', 'crushed', 'shattered',
+        'destroyed', 'broken', 'anguished', 'tormented', 'suffering', 'pain',
+        'painful', 'hurt', 'wounded'
+    ],
+    
+    'triumphant': [
+        'triumphant', 'triumph', 'victorious', 'victory', 'winning', 'successful',
+        'achievement', 'accomplished', 'conquering', 'overcoming', 'glorious',
+        'celebrated'
+    ]
+}
+
 # Initialize emotion extractor
 emotion_extractor = EmotionExtractor(emotion_lexicon)
 print("✓ Emotion extractor initialized")
 
 
-# Test with sample reviews
-test_reviews = [
-    "This book was absolutely amazing! I felt so happy and excited reading every page. The characters were wonderful and the story was uplifting.",
-    "A truly heartbreaking story that made me cry. So sad and depressing, but beautifully written.",
-    "What a thrilling adventure! I was on the edge of my seat. So suspenseful and exciting!",
-    "This romance novel was sweet and touching. Very romantic and heartwarming.",
-    "Dark, disturbing, and haunting. A grim tale that left me unsettled."
-]
-
-print("Testing Emotion Extraction:\n" + "="*60)
-
-for i, review in enumerate(test_reviews, 1):
-    print(f"\nReview {i}: {review[:80]}...")
-    top_emotions = emotion_extractor.get_top_emotions(review, top_n=3)
-    print("Top 3 Emotions:")
-    for emotion, score in top_emotions:
-        if score > 0:
-            print(f"  - {emotion.capitalize()}: {score:.1f}%")

@@ -1,5 +1,4 @@
-# Install required packages
-!pip install nltk pandas numpy scikit-learn matplotlib seaborn wordcloud -q
+# Install required packages (handled by requirements.txt)
 
 import nltk
 import pandas as pd
@@ -11,7 +10,10 @@ import seaborn as sns
 from wordcloud import WordCloud
 
 # Download NLTK data
-nltk.download('punkt', quiet=True)
+try:
+    nltk.download('punkt_tab', quiet=True)
+except:
+    nltk.download('punkt', quiet=True)
 nltk.download('stopwords', quiet=True)
 nltk.download('wordnet', quiet=True)
 nltk.download('averaged_perceptron_tagger', quiet=True)
@@ -20,7 +22,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 
-print("✓ All libraries imported successfully")
+# (setup complete — no print to avoid polluting logs)
 
 
 ## Step 2: Create Comprehensive Emotion Lexicon
@@ -30,25 +32,31 @@ emotion_lexicon = {
     'happy': [
         'joy', 'joyful', 'delighted', 'excited', 'wonderful', 'fantastic', 'amazing',
         'cheerful', 'pleased', 'glad', 'content', 'satisfied', 'thrilled', 'ecstatic',
-        'happy', 'happiness', 'bliss', 'blissful', 'merry', 'jolly', 'uplifting'
+        'happy', 'happiness', 'bliss', 'blissful', 'merry', 'jolly', 'uplifting',
+        'awesome', 'great', 'brilliant', 'excellent', 'love', 'loved',
+        'superb', 'outstanding', 'terrific', 'marvelous', 'splendid', 'delightful'
     ],
     
     'sad': [
         'sad', 'sadness', 'depressing', 'tragic', 'heartbreaking', 'cry', 'tears',
         'melancholy', 'sorrowful', 'miserable', 'gloomy', 'dejected', 'downcast',
-        'unhappy', 'grief', 'mourning', 'somber', 'dismal', 'tearful', 'weeping'
+        'unhappy', 'grief', 'mourning', 'somber', 'dismal', 'tearful', 'weeping',
+        'disappointing', 'disappointed', 'dull', 'boring', 'drab', 'lackluster',
+        'tedious', 'sluggish'
     ],
     
     'angry': [
         'angry', 'anger', 'frustrated', 'frustration', 'annoying', 'infuriating',
         'furious', 'enraged', 'rage', 'irritated', 'irritating', 'mad', 'outraged',
-        'hostile', 'bitter', 'resentful', 'aggravated', 'irate', 'fuming'
+        'hostile', 'bitter', 'resentful', 'aggravated', 'irate', 'fuming',
+        'awful', 'terrible', 'horrible', 'hate', 'hated', 'despicable'
     ],
     
     'fearful': [
         'fear', 'fearful', 'scared', 'afraid', 'terrified', 'frightened', 'anxious',
         'nervous', 'worried', 'panic', 'dread', 'horror', 'terrifying', 'scary',
-        'alarmed', 'threatened', 'uneasy', 'apprehensive', 'tense', 'paranoid'
+        'alarmed', 'threatened', 'uneasy', 'apprehensive', 'tense', 'paranoid',
+        'chilling', 'spooky', 'creepy', 'unsettling', 'horrifying'
     ],
     
     'surprised': [
@@ -67,13 +75,15 @@ emotion_lexicon = {
     'excited': [
         'excited', 'excitement', 'enthusiastic', 'eager', 'energetic', 'pumped',
         'thrilling', 'exhilarating', 'electrifying', 'stimulating', 'invigorating',
-        'spirited', 'animated', 'lively', 'dynamic'
+        'spirited', 'animated', 'lively', 'dynamic',
+        'awesome', 'incredible', 'unbelievable', 'phenomenal'
     ],
     
     'romantic': [
         'romantic', 'romance', 'love', 'loving', 'passionate', 'affectionate',
         'tender', 'sweet', 'charming', 'intimate', 'adoring', 'devoted',
-        'amorous', 'heartfelt', 'caring', 'loving', 'enchanting'
+        'amorous', 'heartfelt', 'caring', 'loving', 'enchanting',
+        'beautiful', 'gorgeous', 'lovely', 'dreamy', 'swoon'
     ],
     
     'hopeful': [

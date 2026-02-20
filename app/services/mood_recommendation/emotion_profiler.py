@@ -1,3 +1,7 @@
+import matplotlib.pyplot as plt
+import numpy as np
+
+
 class BookEmotionProfiler:
     def __init__(self, emotion_extractor):
         self.emotion_extractor = emotion_extractor
@@ -65,6 +69,10 @@ class BookEmotionProfiler:
         plt.grid(axis='y', alpha=0.3)
         plt.show()
 
-# Initialize book profiler
-book_profiler = BookEmotionProfiler(emotion_extractor)
-print("✓ Book emotion profiler initialized")
+# Initialize book profiler (lazy: instantiated on-demand in recommendation_engine)
+# This avoids circular imports and module-load-time initialization issues
+book_profiler = None
+
+def get_book_profiler(emotion_extractor_instance):
+    """Factory function to create book profiler with concrete emotion_extractor."""
+    return BookEmotionProfiler(emotion_extractor_instance)
