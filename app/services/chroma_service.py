@@ -16,19 +16,14 @@ from ollama import Client as OllamaClient
 
 load_dotenv()
 
-from app.exceptions import ChromaEmbeddingConflictError # Restored import
-
 
 class ChromaService:
-    def __init__(self, llm_provider_override: Optional[Literal["OPENAI", "OLLAMA"]] = None, is_retry: bool = False): # Removed use_persisted_llm_provider parameter
+    def __init__(self, llm_provider_override: Optional[Literal["OPENAI", "OLLAMA"]] = None): # Removed use_persisted_llm_provider parameter and is_retry
         # Initialize ChromaDB Persistent Client
         self.client = chromadb.PersistentClient(path="./chromadb")
 
         # Determine LLM provider from override, then environment variable, default to OPENAI
         self.llm_provider = (llm_provider_override or os.getenv("LLM_PROVIDER", "OPENAI")).upper()
-        
-        # This will store the initially requested llm_provider, which might be None
-        requested_llm_provider = self.llm_provider
         
         self._initialize_llm_clients() # Moved this call here
         
@@ -47,17 +42,22 @@ class ChromaService:
                 match = re.search(r"persisted: (\w+)", str(e))
                 persisted_llm_provider = match.group(1).upper() if match else "UNKNOWN"
 
-                if is_retry:
-                    # If we are already retrying, and it still conflicts, something is fundamentally wrong
-                    logging.error(f"ChromaDB embedding function conflict persisted even after retry with '{persisted_llm_provider}'. Re-raising original error.")
-                    raise e
-                else:
-                    # On first attempt, raise custom exception to signal retry with persisted provider
-                    logging.info(f"Raising ChromaEmbeddingConflictError to trigger retry with persisted provider: {persisted_llm_provider}")
-                    raise ChromaEmbeddingConflictError(
-                        detail=f"Embedding function conflict: currently using '{self.llm_provider}', but collection was created with '{persisted_llm_provider}'.",
-                        persisted_llm_provider=persisted_llm_provider
+                if self.llm_provider.upper() != persisted_llm_provider:
+                    logging.warning(f"Requested LLM provider '{self.llm_provider}' is different from persisted provider '{persisted_llm_provider}'. Resetting ChromaDB collection to use '{self.llm_provider}'.")
+                    # Delete the existing collection
+                    self.client.delete_collection(name="books")
+                    # Recreate the collection with the desired embedding function
+                    self.collection = self.client.create_collection(
+                        name="books",
+                        embedding_function=self.embedding_function
                     )
+                    logging.info(f"ChromaDB collection 'books' successfully reset and initialized with '{self.llm_provider}' embedding function.")
+                else:
+                    # If the requested provider is the same as persisted, but there's still a conflict (shouldn't happen)
+                    # or if the conflict is some other ValueError that just happens to contain "Embedding function conflict"
+                    # re-raise the original error.
+                    logging.error(f"ChromaDB embedding function conflict with requested provider '{self.llm_provider}' which is same as persisted '{persisted_llm_provider}'. Re-raising original error.")
+                    raise e
             else:
                 # Re-raise if it's a different ValueError
                 raise

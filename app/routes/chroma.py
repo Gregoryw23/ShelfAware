@@ -7,7 +7,6 @@ from app.dependencies.auth import get_current_user
 from app.services.chroma_service import ChromaService
 from app.schemas.chroma_book import ChromaBookInfo
 from typing import Optional, Literal
-from app.exceptions import ChromaEmbeddingConflictError # New import
 
 
 router = APIRouter()
@@ -34,19 +33,8 @@ def get_chroma_service(
     provider_to_use = llm_provider or llm_provider_for_instance
 
     try:
-        # First attempt to get ChromaService
+        # Attempt to get ChromaService. Conflicts are handled internally now.
         return ChromaService(llm_provider_override=provider_to_use)
-    except ChromaEmbeddingConflictError as e:
-        logging.warning(f"ChromaDB embedding function conflict detected. Attempting retry with persisted provider: {e.persisted_llm_provider}")
-        try:
-            # Second attempt: retry with the persisted LLM provider
-            return ChromaService(llm_provider_override=e.persisted_llm_provider, is_retry=True)
-        except Exception as retry_e:
-            logging.error(f"Failed to initialize ChromaService even after retrying with persisted provider '{e.persisted_llm_provider}': {retry_e}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to initialize ChromaDB service: Embedding function conflict could not be resolved. Original: {str(e)}. Retry error: {str(retry_e)}"
-            )
     except Exception as e:
         logging.error(f"Failed to initialize ChromaService: {e}", exc_info=True)
         raise HTTPException(
@@ -86,6 +74,7 @@ def search_books_in_chromadb(
     query: str,
     distance_threshold: float = 0.9,
     llm_provider: Optional[Literal["OPENAI", "OLLAMA"]] = None, # Keep as query param
+    current_user: dict = Depends(get_current_user), # Added authentication
     chroma_service: ChromaService = Depends(get_chroma_service),
 ):
     """
@@ -104,6 +93,7 @@ def ai_search_books_in_chromadb(
     query: str,
     distance_threshold: float = 0.9,
     llm_provider: Optional[Literal["OPENAI", "OLLAMA"]] = None, # Keep as query param
+    current_user: dict = Depends(get_current_user), # Added authentication
     chroma_service: ChromaService = Depends(get_chroma_service),
 ):
     """
@@ -121,6 +111,7 @@ def ai_search_books_in_chromadb(
 @router.delete("/{book_id}")
 def delete_book(
     book_id: str,
+    current_user: dict = Depends(get_current_user), # Added authentication
     chroma_service: ChromaService = Depends(get_chroma_service),
 ):
     """
