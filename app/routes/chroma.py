@@ -74,6 +74,7 @@ def search_books_in_chromadb(
     query: str,
     distance_threshold: float = 0.9,
     llm_provider: Optional[Literal["OPENAI", "OLLAMA"]] = None, # Keep as query param
+    current_user: dict = Depends(get_current_user), # Added authentication
     chroma_service: ChromaService = Depends(get_chroma_service),
 ):
     """
@@ -92,6 +93,7 @@ def ai_search_books_in_chromadb(
     query: str,
     distance_threshold: float = 0.9,
     llm_provider: Optional[Literal["OPENAI", "OLLAMA"]] = None, # Keep as query param
+    current_user: dict = Depends(get_current_user), # Added authentication
     chroma_service: ChromaService = Depends(get_chroma_service),
 ):
     """
@@ -109,6 +111,7 @@ def ai_search_books_in_chromadb(
 @router.delete("/{book_id}")
 def delete_book(
     book_id: str,
+    current_user: dict = Depends(get_current_user), # Added authentication
     chroma_service: ChromaService = Depends(get_chroma_service),
 ):
     """
