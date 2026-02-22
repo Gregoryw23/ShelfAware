@@ -8,6 +8,8 @@ from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import requests
 from app.exceptions import ServiceException
+from botocore.exceptions import ClientError
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -72,18 +74,46 @@ class CognitoService:
         except jwt.JWTError as e:
             raise ServiceException(status_code=401, detail=f"Token validation error: {str(e)}")
         
+    def initiate_forgot_password(self, username: str) -> dict:
+        """
+        Starts Cognito forgot-password flow (sends OTP/code to email/SMS).
+        """
+        return self.client.forgot_password(
+            ClientId=self.client_id,
+            Username=username,
+            SecretHash=self.calculate_secret_hash(username) 
+        )
+    def confirm_forgot_password(self, username: str, confirmation_code: str, new_password: str) -> dict:
 
-    def calculate_secret_hash(self, username):
+        try:
+            return self.client.confirm_forgot_password(
+                ClientId=self.client_id,
+                Username=username,
+                ConfirmationCode=confirmation_code,
+                Password=new_password,
+                SecretHash=self.calculate_secret_hash(username),
+            )
+        except self.client.exceptions.CodeMismatchException:
+            raise ServiceException(status_code=400, detail="Invalid reset code.")
+        except self.client.exceptions.ExpiredCodeException:
+            raise ServiceException(status_code=400, detail="Reset code has expired.")
+        except self.client.exceptions.InvalidPasswordException as e:
+            raise ServiceException(status_code=400, detail=f"Password does not meet policy: {str(e)}")
+        except self.client.exceptions.UserNotFoundException:
+            raise ServiceException(status_code=404, detail="User not found.")
+        except ClientError as e:
+            raise ServiceException(status_code=400, detail=str(e))
+        except Exception as e:
+            raise ServiceException(status_code=500, detail=f"Reset password failed: {str(e)}")
+    
+    def calculate_secret_hash(self, username) -> str:
         """
         Calculate the Cognito SECRET_HASH for the given username.
         """
-        message = username + self.client_id
-        dig = hmac.new(
-            self.client_secret.encode("utf-8"),
-            message.encode("utf-8"),
-            hashlib.sha256
-        ).digest()
-        return base64.b64encode(dig).decode()
+        message = (username + self.client_id).encode("utf-8")
+        key = self.client_secret.encode("utf-8")
+        dig = hmac.new(key, message,hashlib.sha256).digest()
+        return base64.b64encode(dig).decode("utf-8")
 
     def authenticate_user(self, username: str, password: str):
         """
