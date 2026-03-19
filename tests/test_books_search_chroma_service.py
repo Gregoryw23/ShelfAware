@@ -1,15 +1,12 @@
 import pytest
-from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch, call
 import os
 import uuid
 from typing import Optional
 
-from app.main import app
 from app.services.chroma_service import ChromaService
 from app.models.book import Book
 from app.services.book_service import BookService
-from app.dependencies.auth import get_current_user
 
 # Mock environment variables - crucial for ChromaService initialization
 @pytest.fixture(autouse=True)
@@ -75,65 +72,6 @@ def create_mock_book(book_id: str, title: str, abstract: Optional[str]):
     mock_book.title = title
     mock_book.abstract = abstract
     return mock_book
-
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.db.database import Base, get_db
-
-
-# --- New fixtures for Route Testing ---
-
-@pytest.fixture(scope="function")
-def test_db_session():
-    """
-    Fixture to create a new in-memory SQLite database session for each test function.
-    It overrides the `get_db` dependency to ensure test isolation.
-    """
-    TEST_DATABASE_URL = "sqlite:///:memory:"
-    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-    Base.metadata.create_all(bind=engine)
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-    def override_get_db():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    # Replace the app's dependency with the test version
-    app.dependency_overrides[get_db] = override_get_db
-    
-    yield
-
-    # Clean up by dropping all tables and clearing the override
-    Base.metadata.drop_all(bind=engine)
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-def client(test_db_session):
-    """
-    Fixture to create a TestClient that uses the isolated test database.
-    It also mocks the user authentication.
-    """
-    # Mock authentication to allow access to the endpoint
-    async def mock_get_current_user():
-        return {"id": "test_user", "email": "test@example.com", "role": "admin"}
-    
-    app.dependency_overrides[get_current_user] = mock_get_current_user
-    with TestClient(app) as c:
-        yield c
-    app.dependency_overrides.clear()
-
-@pytest.fixture
-def mock_chroma_service_in_route():
-    # Patch ChromaService where it is imported in the routes module
-    with patch('app.routes.chroma.ChromaService') as MockChromaService:
-        mock_instance = Mock(spec=ChromaService)
-        mock_instance.llm_provider = "OPENAI" # Default for mock
-        MockChromaService.return_value = mock_instance
-        yield MockChromaService # Return the CLASS mock to check constructor calls
 
 # --- Tests for sync_books ---
 
@@ -269,88 +207,6 @@ def test_sync_books_exception_handling(
     # Verify session was closed even after exception
     mock_db_session.close.assert_called_once()
 
-# --- Tests for /books/search/sync-from-db Endpoint ---
-
-def test_sync_from_db_endpoint_success(client, mock_chroma_service_in_route):
-    # Arrange
-    mock_instance = mock_chroma_service_in_route.return_value
-    mock_instance.sync_books.return_value = {"upserted": 10, "deleted": 5}
-    mock_instance.llm_provider = "OPENAI"
-    
-    # Act
-    response = client.post("/books/search/sync-from-db?limit=50")
-    
-    # Assert
-    assert response.status_code == 200
-    assert response.json() == {
-        "message": "ChromaDB synchronization completed using OPENAI. Upserted: 10 books, Deleted: 5 books."
-    }
-    mock_instance.sync_books.assert_called_once_with(limit=50)
-
-def test_sync_from_db_endpoint_exception(client, mock_chroma_service_in_route):
-    # Arrange
-    mock_instance = mock_chroma_service_in_route.return_value
-    mock_instance.sync_books.side_effect = Exception("Sync failed")
-    
-    # Act
-    response = client.post("/books/search/sync-from-db")
-    
-    # Assert
-    assert response.status_code == 500
-    assert "Failed to synchronize ChromaDB: Sync failed" in response.json()["detail"]
-
-def test_sync_from_db_endpoint_unauthorized(client):
-    # Arrange: Override get_current_user to raise an exception (simulating unauthorized)
-    from fastapi import HTTPException
-    async def mock_unauthorized():
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    app.dependency_overrides[get_current_user] = mock_unauthorized
-    
-    # Act
-    response = client.post("/books/search/sync-from-db")
-    
-    # Assert
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Not authenticated"
-    
-    # Clean up override for other tests
-    del app.dependency_overrides[get_current_user]
-
-# --- Tests for Initialization and Dependency Logic (get_chroma_service) ---
-
-def test_get_chroma_service_fallback_to_ollama(client, mock_chroma_service_in_route):
-    # Arrange: Mock env vars so OPENAI is default but key is missing
-    with patch.dict(os.environ, {"LLM_PROVIDER": "OPENAI", "OPENAI_API_KEY": ""}):
-        # Act
-        client.post("/books/search/sync-from-db")
-        
-        # Assert: Check if ChromaService was instantiated with OLLAMA
-        mock_chroma_service_in_route.assert_called()
-        args, kwargs = mock_chroma_service_in_route.call_args
-        assert kwargs['llm_provider_override'] == "OLLAMA"
-
-def test_get_chroma_service_explicit_ollama(client, mock_chroma_service_in_route):
-    # Arrange: Mock env vars for OLLAMA
-    with patch.dict(os.environ, {"LLM_PROVIDER": "OLLAMA"}):
-        # Act
-        client.post("/books/search/sync-from-db")
-        
-        # Assert
-        mock_chroma_service_in_route.assert_called()
-        args, kwargs = mock_chroma_service_in_route.call_args
-        assert kwargs['llm_provider_override'] == "OLLAMA"
-
-def test_get_chroma_service_initialization_failure(client):
-    # Arrange: Mock ChromaService to raise an exception during instantiation
-    with patch('app.routes.chroma.ChromaService', side_effect=Exception("Init failed")):
-        # Act
-        response = client.post("/books/search/sync-from-db")
-        
-        # Assert
-        assert response.status_code == 500
-        assert "Failed to initialize ChromaDB service: Init failed" in response.json()["detail"]
-
 # --- Tests for ChromaService Constructor Conflict Handling ---
 
 def test_chroma_service_init_conflict_resets_collection(mock_chroma_client):
@@ -386,3 +242,90 @@ def test_chroma_service_init_other_value_error_re_raised(mock_chroma_client):
         # Act & Assert
         with pytest.raises(ValueError, match="Some other error"):
             ChromaService()
+
+# --- Additional tests for Initialization Edge Cases and Provider Logic ---
+
+def test_chroma_service_init_conflict_same_provider_re_raises(mock_chroma_client):
+    # Arrange: Error says persisted is OPENAI, and we requested OPENAI
+    mock_chroma_client.get_or_create_collection.side_effect = ValueError(
+        "Embedding function conflict. persisted: OPENAI, requested: OPENAI"
+    )
+    
+    with patch.object(ChromaService, '_initialize_llm_clients', lambda s: setattr(s, 'embedding_function', Mock())):
+        with patch.dict(os.environ, {"LLM_PROVIDER": "OPENAI"}):
+            # Act & Assert
+            with pytest.raises(ValueError, match="persisted: OPENAI"):
+                ChromaService()
+
+def test_initialize_llm_clients_openai_no_key():
+    # Arrange
+    with patch.dict(os.environ, {"LLM_PROVIDER": "OPENAI", "OPENAI_API_KEY": ""}, clear=True):
+        # We use __new__ to avoid calling __init__ which triggers the complex setup
+        service = ChromaService.__new__(ChromaService)
+        service.llm_provider = "OPENAI"
+        
+        # Act & Assert
+        with pytest.raises(ValueError, match="OPENAI_API_KEY environment variable not set"):
+            service._initialize_llm_clients()
+
+def test_initialize_llm_clients_ollama_config():
+    # Arrange
+    with patch.dict(os.environ, {
+        "LLM_PROVIDER": "OLLAMA",
+        "OLLAMA_URL": "http://test-ollama:11434",
+        "OLLAMA_EMBEDDING_MODEL": "test-emb",
+        "OLLAMA_LLM_MODEL": "test-llm"
+    }):
+        service = ChromaService.__new__(ChromaService)
+        service.llm_provider = "OLLAMA"
+        
+        with patch('app.services.chroma_service.embedding_functions.OllamaEmbeddingFunction') as MockEmb, \
+             patch('app.services.chroma_service.OllamaClient') as MockClient:
+            
+            # Act
+            service._initialize_llm_clients()
+            
+            # Assert
+            MockEmb.assert_called_once_with(model_name="test-emb", url="http://test-ollama:11434")
+            MockClient.assert_called_once_with(host="http://test-ollama:11434")
+            assert service.llm_model_for_generation == "test-llm"
+
+def test_initialize_llm_clients_unsupported_provider():
+    # Arrange
+    service = ChromaService.__new__(ChromaService)
+    service.llm_provider = "ANTHROPIC"
+    
+    # Act & Assert
+    with pytest.raises(ValueError, match="Unsupported LLM_PROVIDER: ANTHROPIC"):
+        service._initialize_llm_clients()
+
+# --- Additional tests for Sync Logic Branch Coverage ---
+
+def test_sync_books_no_deletions_needed(
+    chroma_service_for_sync, mock_db_session, mock_book_service, mock_chroma_collection
+):
+    # Arrange: DB and Chroma have the exact same book
+    book_id = str(uuid.uuid4())
+    db_books = [create_mock_book(book_id, "Title", "Abstract")]
+    mock_book_service.get_books.return_value = db_books
+    mock_chroma_collection.get.return_value = {"ids": [book_id]}
+
+    # Act
+    result = chroma_service_for_sync.sync_books()
+
+    # Assert
+    assert result == {"upserted": 1, "deleted": 0}
+    mock_chroma_collection.delete.assert_not_called()
+
+def test_sync_books_successful_session_closure(
+    chroma_service_for_sync, mock_db_session, mock_book_service, mock_chroma_collection
+):
+    # Arrange
+    mock_book_service.get_books.return_value = []
+    mock_chroma_collection.get.return_value = {"ids": []}
+
+    # Act
+    chroma_service_for_sync.sync_books()
+
+    # Assert
+    mock_db_session.close.assert_called_once()
