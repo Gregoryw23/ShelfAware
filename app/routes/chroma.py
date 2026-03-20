@@ -108,7 +108,7 @@ def ai_search_books_in_chromadb(
     response = chroma_service.generate_natural_language_response(query, results)
     return {"query": query, "response": response}
 
-@router.delete("/{book_id}")
+@router.delete("/vector/{book_id}")
 def delete_book(
     book_id: str,
     current_user: dict = Depends(get_current_user), # Added authentication

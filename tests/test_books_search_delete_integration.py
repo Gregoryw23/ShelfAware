@@ -38,7 +38,7 @@ def client():
         yield c
     app.dependency_overrides.clear()
 
-# --- Integration Tests for DELETE /books/search/{book_id} Endpoint ---
+# --- Integration Tests for DELETE /books/search/vector/{book_id} Endpoint ---
 
 def test_delete_book_endpoint_success(client, mock_chroma_service):
     # Arrange
@@ -46,7 +46,7 @@ def test_delete_book_endpoint_success(client, mock_chroma_service):
     mock_instance.delete_book.return_value = None
     
     # Act
-    response = client.delete("/books/search/test_id")
+    response = client.delete("/books/search/vector/test_id")
     
     # Assert
     assert response.status_code == 200
@@ -59,7 +59,7 @@ def test_delete_book_endpoint_failure(client, mock_chroma_service):
     mock_instance.delete_book.side_effect = Exception("Delete failed")
     
     # Act
-    response = client.delete("/books/search/error_id")
+    response = client.delete("/books/search/vector/error_id")
     
     # Assert
     assert response.status_code == 500
@@ -74,7 +74,7 @@ def test_delete_book_endpoint_unauthorized(client):
     app.dependency_overrides[get_current_user] = mock_unauthorized
     
     # Act
-    response = client.delete("/books/search/test_id")
+    response = client.delete("/books/search/vector/test_id")
     
     # Assert
     assert response.status_code == 401
