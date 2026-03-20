@@ -4,22 +4,58 @@ This file is automatically discovered by pytest.
 """
 
 import pytest
-from datetime import datetime
-from unittest.mock import Mock
-from sqlalchemy.orm import Session
+from fastapi.testclient import TestClient
 
+from datetime import datetime
+
+from unittest.mock import Mock, patch
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.main import app
+from app.db.database import Base, get_db
 from app.services.review_service import ReviewService
 from app.models.review import Review
 from app.models.user import User
 from app.models.book import Book
 from app.models.mood import Mood
 
+"""In-memory SQLite database setup for testing"""
+TEST_DATABASE_URL = "sqlite:///:memory:"
+
+engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool,)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture
 def mock_db():
     """Mock SQLAlchemy database session."""
     return Mock(spec=Session)
 
+#Fresh in-memory DB for each test
+@pytest.fixture
+def db():
+    Base.metadata.create_all(bind=engine)
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(bind=engine)
+
+# FastAPI TestClient with DB override
+@pytest.fixture
+def client(db):
+    def override_get_db():
+        yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app) as c:
+        yield c
+
+    app.dependency_overrides.clear()
 
 @pytest.fixture
 def review_service(mock_db):
@@ -92,3 +128,41 @@ def sample_reviews_list():
         )
         for i in range(5)
     ]
+
+"""Cognito mocks for auth tests"""
+
+@pytest.fixture
+def mock_cognito():
+    """
+    Patch the Cognito object used by the auth router.
+    Adjust the patch target if your code imports it differently.
+    """
+    with patch("app.routers.auth.cognito_service") as mock:
+        mock.register_user.return_value = {
+            "UserSub": "test-sub-uuid-1234",
+            "UserConfirmed": False,
+        }
+        mock.authenticate_user.return_value = {
+            "AccessToken": "fake-access-token",
+            "IdToken": "fake-id-token",
+            "RefreshToken": "fake-refresh-token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+        }
+        mock.confirm_user.return_value = {
+            "message": "User confirmed successfully"
+        }
+        mock.resend_confirmation_code.return_value = {
+            "message": "Confirmation code resent"
+        }
+        mock.forgot_password.return_value = {
+            "message": "Password reset code sent"
+        }
+        mock.confirm_forgot_password.return_value = {
+            "message": "Password reset successful"
+        }
+        yield mock
+
+@pytest.fixture
+def auth_headers():
+    return {"Authorization": "Bearer fake-access-token"}
