@@ -37,7 +37,7 @@ def mock_cognito(mocker):
     service = CognitoService()
     service.client_id = "test_client_id"
     service.client_secret = "test_client_secret"
-    service.client = mock_client
+    # 👇 关键修复：去掉了 service.client = mock_client，因为属性被设置为了只读
     return service
 
 
