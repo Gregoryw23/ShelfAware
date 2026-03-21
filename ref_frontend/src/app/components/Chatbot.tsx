@@ -5,12 +5,25 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Avatar, AvatarFallback } from './ui/avatar';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from './ui/carousel';
 import { Send, Bot, User, Sparkles, Heart } from 'lucide-react';
-import { mockBooks, emotionTags } from '../data/mockData';
+import { emotionTags } from '../data/mockData';
 import { ChatMessage } from '../types';
+import { apiService, ChatBookRecommendation } from '../services/api';
+
+interface UIChatMessage extends ChatMessage {
+  recommendedBooks?: ChatBookRecommendation[];
+  followUpQuestions?: string[];
+}
 
 export function Chatbot() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = useState<UIChatMessage[]>([
     {
       id: '1',
       role: 'assistant',
@@ -28,41 +41,14 @@ export function Chatbot() {
     );
   };
 
-  const generateResponse = (userMessage: string, emotions: string[]) => {
-    // Simple mock AI responses based on emotions
-    const emotionLower = emotions.map((e) => e.toLowerCase());
-    
-    if (emotionLower.includes('sad') || emotionLower.includes('melancholic')) {
-      const recommendations = mockBooks.filter((b) => 
-        b.genre.includes('Fantasy') || b.genre.includes('Biography/Memoir')
-      ).slice(0, 3);
-      return `I understand you're feeling ${emotions.join(', ')}. Here are some books that might help:\n\n${recommendations.map(b => `• "${b.title}" by ${b.author} - ${b.abstract.substring(0, 100)}...`).join('\n\n')}`;
-    }
-    
-    if (emotionLower.includes('motivated') || emotionLower.includes('inspired')) {
-      const recommendations = mockBooks.filter((b) => 
-        b.genre.includes('Psychology/Self-Help') || b.genre.includes('Biography/Memoir')
-      ).slice(0, 3);
-      return `Great energy! Here are some motivational reads:\n\n${recommendations.map(b => `• "${b.title}" by ${b.author} - ${b.abstract.substring(0, 100)}...`).join('\n\n')}`;
-    }
-    
-    if (emotionLower.includes('curious') || emotionLower.includes('adventurous')) {
-      const recommendations = mockBooks.filter((b) => 
-        b.genre.includes('Mystery/Thriller') || b.genre.includes('Science Fiction')
-      ).slice(0, 3);
-      return `Perfect! Here are some thrilling reads for your curious mind:\n\n${recommendations.map(b => `• "${b.title}" by ${b.author} - ${b.abstract.substring(0, 100)}...`).join('\n\n')}`;
-    }
-
-    return `Based on your emotions (${emotions.join(', ')}), I'd recommend exploring these books:\n\n${mockBooks.slice(0, 3).map(b => `• "${b.title}" by ${b.author} - A ${b.genre[0]} book rated ${b.averageRating} stars.`).join('\n\n')}\n\nWould you like to know more about any of these?`;
-  };
-
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputMessage.trim() && selectedEmotions.length === 0) return;
 
+    const outgoingMessage = inputMessage.trim() || `Feeling: ${selectedEmotions.join(', ')}`;
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: inputMessage || `Feeling: ${selectedEmotions.join(', ')}`,
+      content: outgoingMessage,
       timestamp: new Date().toISOString(),
     };
 
@@ -70,24 +56,31 @@ export function Chatbot() {
     setInputMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const response = generateResponse(
-        inputMessage,
-        selectedEmotions.length > 0 ? selectedEmotions : ['neutral']
-      );
-      
-      const aiMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+    try {
+      const result = await apiService.chat({ message: outgoingMessage });
+      const aiMessage: UIChatMessage = {
+        id: `${Date.now()}-assistant`,
         role: 'assistant',
-        content: response,
+        content: result.response,
         timestamp: new Date().toISOString(),
+        recommendedBooks: result.books,
+        followUpQuestions: result.follow_up_questions,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error calling chatbot API:', error);
+      const fallbackMessage: ChatMessage = {
+        id: `${Date.now()}-assistant-error`,
+        role: 'assistant',
+        content: 'I could not reach the chatbot service right now. Please try again in a moment.',
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, fallbackMessage]);
+    } finally {
       setIsTyping(false);
       setSelectedEmotions([]);
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -138,6 +131,60 @@ export function Chatbot() {
                         }`}
                       >
                         <p className="text-sm whitespace-pre-line">{message.content}</p>
+
+                        {message.role === 'assistant' && message.recommendedBooks && message.recommendedBooks.length > 0 && (
+                          <div className="mt-3 space-y-2">
+                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                              Recommended books
+                            </p>
+                            <Carousel
+                              opts={{ align: 'start', loop: false }}
+                              className="w-full px-8"
+                            >
+                              <CarouselContent>
+                                {message.recommendedBooks.map((book) => (
+                                  <CarouselItem key={book.book_id} className="basis-[155px] sm:basis-[175px]">
+                                    <div className="rounded-md border bg-white overflow-hidden">
+                                      <img
+                                        src={book.cover_image_url || 'https://via.placeholder.com/120x180?text=No+Cover'}
+                                        alt={book.title}
+                                        className="w-full h-40 object-cover"
+                                      />
+                                      <div className="p-2">
+                                        <p className="text-xs font-semibold text-gray-900 line-clamp-2" title={book.title}>
+                                          {book.title}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </CarouselItem>
+                                ))}
+                              </CarouselContent>
+                              <CarouselPrevious className="left-0" />
+                              <CarouselNext className="right-0" />
+                            </Carousel>
+                          </div>
+                        )}
+
+                        {message.role === 'assistant' && message.followUpQuestions && message.followUpQuestions.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                              Follow-up questions
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {message.followUpQuestions.map((question, idx) => (
+                                <button
+                                  key={`${message.id}-followup-${idx}`}
+                                  type="button"
+                                  onClick={() => setInputMessage(question)}
+                                  className="text-xs bg-white border border-gray-200 rounded-full px-3 py-1 text-gray-700 hover:bg-gray-50"
+                                >
+                                  {question}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         <span className="text-xs opacity-70 mt-1 block">
                           {new Date(message.timestamp).toLocaleTimeString()}
                         </span>

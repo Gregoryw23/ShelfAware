@@ -89,7 +89,7 @@ export function AdminPanel() {
                   <TableRow>
                     <TableHead>Cover</TableHead>
                     <TableHead className="w-[280px]">Title</TableHead>
-                    <TableHead>Subtitle</TableHead>
+                    <TableHead className="w-[360px]">Community Review</TableHead>
                     <TableHead>Pages</TableHead>
                     <TableHead>Published</TableHead>
                     <TableHead>Actions</TableHead>
@@ -132,7 +132,20 @@ export function AdminPanel() {
                             {book.title}
                           </span>
                         </TableCell>
-                        <TableCell>{book.subtitle || '-'}</TableCell>
+                        <TableCell className="w-[360px] max-w-[360px]">
+                          <span
+                            className="text-sm text-gray-700 whitespace-normal break-words leading-5"
+                            style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                            title={book.CommunitySynopsis || 'No community review available'}
+                          >
+                            {book.CommunitySynopsis || '-'}
+                          </span>
+                        </TableCell>
                         <TableCell>{book.page_count ?? '-'}</TableCell>
                         <TableCell>
                           {book.published_date ? new Date(book.published_date).getFullYear() : '-'}

@@ -1,11 +1,13 @@
 from typing import Dict, List, Optional
-import openai
-import os
+from sqlalchemy import or_
+from sqlalchemy.orm import Session, selectinload
+from app.models.book import Book
+from app.models.genre import Genre
 
 class ChatbotService:
-    def __init__(self):
-        self.api_key = os.getenv("OPENAI_API_KEY", "")
-        
+    def __init__(self, db: Session):
+        self.db = db
+
         self.emotions = [
             "happy", "sad", "angry", "excited", "scared", "romantic", 
             "suspenseful", "dark", "hopeful", "nostalgic", "peaceful", 
@@ -13,6 +15,33 @@ class ChatbotService:
             "inspired", "amused", "moved", "adventurous", "reflective", 
             "whimsical", "heartbroken", "triumphant"
         ]
+
+        self.mood_genre_keywords = {
+            "happy": ["comedy", "humor", "fiction", "feel-good"],
+            "sad": ["biography", "memoir", "self-help", "inspir"],
+            "angry": ["self-help", "psychology", "mindfulness"],
+            "excited": ["thriller", "adventure", "action", "fantasy"],
+            "scared": ["horror", "thriller", "mystery"],
+            "romantic": ["romance", "drama"],
+            "suspenseful": ["thriller", "mystery", "crime"],
+            "dark": ["horror", "psychological", "dystopian"],
+            "hopeful": ["self-help", "inspir", "biography"],
+            "nostalgic": ["classic", "historical", "memoir"],
+            "peaceful": ["poetry", "philosophy", "self-help"],
+            "curious": ["science", "history", "non-fiction", "mystery"],
+            "empowered": ["biography", "self-help", "leadership"],
+            "lonely": ["memoir", "self-help", "fiction"],
+            "grateful": ["memoir", "spiritual", "self-help"],
+            "confused": ["philosophy", "psychology", "self-help"],
+            "inspired": ["biography", "self-help", "inspir"],
+            "amused": ["comedy", "humor"],
+            "moved": ["drama", "memoir", "fiction"],
+            "adventurous": ["adventure", "fantasy", "science fiction", "thriller"],
+            "reflective": ["philosophy", "memoir", "classic"],
+            "whimsical": ["fantasy", "magical", "fiction"],
+            "heartbroken": ["romance", "self-help", "memoir"],
+            "triumphant": ["biography", "self-help", "history"],
+        }
     
     def detect_mood(self, message: str) -> List[str]:
         message_lower = message.lower()
@@ -60,6 +89,49 @@ class ChatbotService:
             "triumphant": "Celebrate with these triumphant stories:"
         }
         return responses.get(mood, "Here are some books you might enjoy:")
+
+    def get_recommended_books(self, mood: str, limit: int = 3) -> List[Dict]:
+        """Return DB-backed recommendations using mood-to-genre keyword matching."""
+        keywords = self.mood_genre_keywords.get(mood, ["fiction", "self-help", "mystery"])
+
+        query = self.db.query(Book).options(selectinload(Book.genres))
+
+        genre_filters = [Book.genres.any(Genre.name.ilike(f"%{kw}%")) for kw in keywords]
+
+        if genre_filters:
+            matched_books = (
+                query.filter(or_(*genre_filters))
+                .order_by(Book.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+        else:
+            matched_books = []
+
+        if len(matched_books) < limit:
+            matched_ids = {book.book_id for book in matched_books}
+            fallback_books = (
+                query.filter(~Book.book_id.in_(matched_ids) if matched_ids else True)
+                .order_by(Book.created_at.desc())
+                .limit(limit - len(matched_books))
+                .all()
+            )
+            matched_books.extend(fallback_books)
+
+        results = []
+        for book in matched_books:
+            results.append(
+                {
+                    "book_id": book.book_id,
+                    "title": book.title,
+                    "subtitle": book.subtitle,
+                    "abstract": book.abstract,
+                    "cover_image_url": book.cover_image_url,
+                    "genres": [genre.name for genre in (book.genres or [])],
+                }
+            )
+
+        return results
     
     def process_message(self, message: str, user_id: Optional[str] = None) -> Dict:
         moods = self.detect_mood(message)
@@ -67,7 +139,7 @@ class ChatbotService:
         
         response_text = self.generate_response(primary_mood)
         
-        books = []
+        books = self.get_recommended_books(primary_mood)
         
         follow_ups = [
             "Would you like books in a different mood?",

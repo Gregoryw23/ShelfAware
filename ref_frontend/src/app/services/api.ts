@@ -28,6 +28,27 @@ export interface ReviewCreate {
   mood?: string;
 }
 
+export interface ChatRequest {
+  message: string;
+  user_id?: string;
+}
+
+export interface ChatBookRecommendation {
+  book_id: string;
+  title: string;
+  subtitle?: string | null;
+  abstract?: string | null;
+  cover_image_url?: string | null;
+  genres?: string[];
+}
+
+export interface ChatResponse {
+  response: string;
+  mood: string;
+  books: ChatBookRecommendation[];
+  follow_up_questions: string[];
+}
+
 class ApiService {
   private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -66,6 +87,14 @@ class ApiService {
     return this.request(`/reviews/books/${bookId}`, {
       method: 'POST',
       body: JSON.stringify(review),
+    });
+  }
+
+  // Chatbot API
+  async chat(request: ChatRequest): Promise<ChatResponse> {
+    return this.request('/api/chatbot/chat', {
+      method: 'POST',
+      body: JSON.stringify(request),
     });
   }
 }
