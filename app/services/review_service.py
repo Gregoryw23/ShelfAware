@@ -63,7 +63,7 @@ class ReviewService:
         review = Review(book_id=book_id, user_id=user_id, **payload)
         self.db.add(review)
 
-        # ✅ Mood handling (use mood_text from earlier pop)
+        # Mood handling (use mood_text from earlier pop)
         if mood_text:
             mood_entry = Mood(user_id=user_id, mood=mood_text, mood_date=date.today())
             self.db.add(mood_entry)
@@ -113,7 +113,7 @@ class ReviewService:
         for key, value in update_data.items():
             setattr(review, key, value)
 
-        # ✅ Mood update (use mood_text variable)
+        # Mood update (use mood_text variable)
         if mood_text is not None:
             existing_mood = self.db.scalar(
                 select(Mood).where(Mood.user_id == acting_user_id, Mood.mood_date == date.today())

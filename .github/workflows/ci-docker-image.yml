@@ -1,0 +1,100 @@
+name: Python CI with Docker
+
+on:
+  push:
+    branches: ["main"]
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches: ["main"]
+
+env:
+  DOCKER_IMAGE: zhengsenlim/shelfaware_app
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # set these secrets in the GitHub repository settings
+      # these are used to run the tests
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+      COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+      COGNITO_CLIENT_SECRET: ${{ secrets.COGNITO_CLIENT_SECRET }}
+      COGNITO_USER_ROLE: ${{ secrets.COGNITO_USER_ROLE }}
+      COGNITO_ADMIN_ROLE: ${{ secrets.COGNITO_ADMIN_ROLE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests with pytest
+        env:
+          LLM_PROVIDER: OPENAI
+        run: |
+          python -m pytest -v -s
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Security scan with Bandit
+        run: |
+          bandit -r app/ scripts/ -ll -ii
+
+  build-and-push:
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Extract version
+        id: get_version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            # For tag pushes, use the tag name as version
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+            echo "TAGS=${{ env.DOCKER_IMAGE }}:$VERSION,${{ env.DOCKER_IMAGE }}:latest" >> $GITHUB_OUTPUT
+          else
+            # For branch pushes, just use latest
+            echo "VERSION=latest" >> $GITHUB_OUTPUT
+            echo "TAGS=${{ env.DOCKER_IMAGE }}:latest" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          # set these secrets in the GitHub repository settings
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.get_version.outputs.TAGS }}

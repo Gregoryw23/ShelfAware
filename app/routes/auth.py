@@ -117,7 +117,7 @@ def reset_password(payload: ResetPasswordRequest):
     try:
         cognito_service.confirm_forgot_password(
             username=email,
-            confirmation_code=payload.confirmation_code,
+            confirmation_code=payload.token,
             new_password=payload.new_password,
         )
 
