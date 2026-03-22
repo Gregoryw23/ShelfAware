@@ -44,8 +44,11 @@ export interface ChatRequest {
 }
 
 export interface ChatBookRecommendation {
-  book_id: string;
+  book_id?: string;
+  id?: string;
   title: string;
+  author?: string;
+  similarity?: number;
   subtitle?: string | null;
   abstract?: string | null;
   cover_image_url?: string | null;

@@ -15,12 +15,14 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const handleLogin = (admin: boolean, auth?: { accessToken: string; email: string }) => {
+  const handleLogin = (admin: boolean, auth?: { accessToken: string; email: string; userId: string }) => {
     setIsAuthenticated(true);
     setIsAdmin(admin);
     setAccessToken(auth?.accessToken ?? null);
     setUserEmail(auth?.email ?? null);
+    setUserId(auth?.userId ?? null);
   };
 
   const handleLogout = () => {
@@ -28,6 +30,7 @@ export default function App() {
     setIsAdmin(false);
     setAccessToken(null);
     setUserEmail(null);
+    setUserId(null);
   };
 
   if (!isAuthenticated) {
@@ -48,7 +51,7 @@ export default function App() {
           <Route path="/bookshelf" element={<Bookshelf accessToken={accessToken} />} />
           <Route path="/book/:bookId" element={<BookDetail />} />
           <Route path="/profile" element={<Profile accessToken={accessToken} userEmail={userEmail} />} />
-          <Route path="/chatbot" element={<Chatbot />} />
+          <Route path="/chatbot" element={<Chatbot userId={userId} />} />
           <Route path="/admin" element={isAdmin ? <AdminPanel /> : <Navigate to="/inspiration" replace />} />
           <Route path="*" element={<Navigate to="/inspiration" replace />} />
         </Routes>

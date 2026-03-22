@@ -22,7 +22,11 @@ interface UIChatMessage extends ChatMessage {
   followUpQuestions?: string[];
 }
 
-export function Chatbot() {
+interface ChatbotProps {
+  userId?: string | null;
+}
+
+export function Chatbot({ userId }: ChatbotProps) {
   const [messages, setMessages] = useState<UIChatMessage[]>([
     {
       id: '1',
@@ -57,7 +61,10 @@ export function Chatbot() {
     setIsTyping(true);
 
     try {
-      const result = await apiService.chat({ message: outgoingMessage });
+      const result = await apiService.chat({
+        message: outgoingMessage,
+        user_id: userId ?? undefined,
+      });
       const aiMessage: UIChatMessage = {
         id: `${Date.now()}-assistant`,
         role: 'assistant',
@@ -142,8 +149,8 @@ export function Chatbot() {
                               className="w-full px-8"
                             >
                               <CarouselContent>
-                                {message.recommendedBooks.map((book) => (
-                                  <CarouselItem key={book.book_id} className="basis-[155px] sm:basis-[175px]">
+                                {message.recommendedBooks.map((book, index) => (
+                                  <CarouselItem key={book.book_id ?? book.id ?? `${message.id}-${index}`} className="basis-[155px] sm:basis-[175px]">
                                     <div className="rounded-md border bg-white overflow-hidden">
                                       <img
                                         src={book.cover_image_url || 'https://via.placeholder.com/120x180?text=No+Cover'}
@@ -154,6 +161,12 @@ export function Chatbot() {
                                         <p className="text-xs font-semibold text-gray-900 line-clamp-2" title={book.title}>
                                           {book.title}
                                         </p>
+                                        {book.author && (
+                                          <p className="text-[11px] text-gray-600 line-clamp-1">{book.author}</p>
+                                        )}
+                                        {typeof book.similarity === 'number' && (
+                                          <p className="text-[11px] text-gray-500">Match {(book.similarity * 100).toFixed(0)}%</p>
+                                        )}
                                       </div>
                                     </div>
                                   </CarouselItem>

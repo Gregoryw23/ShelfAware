@@ -10,7 +10,7 @@ import { apiService, ApiError } from '../services/api';
 import logoImage from '../../assets/08044afe8eb8f9700793bdbb3ce5779e85ca56f7.png';
 
 interface LoginProps {
-  onLogin: (isAdmin: boolean, auth?: { accessToken: string; email: string }) => void;
+  onLogin: (isAdmin: boolean, auth?: { accessToken: string; email: string; userId: string }) => void;
 }
 
 export function Login({ onLogin }: LoginProps) {
@@ -45,7 +45,7 @@ export function Login({ onLogin }: LoginProps) {
         throw new Error('Login response did not include an access token');
       }
 
-      onLogin(false, { accessToken, email: result.user.email });
+      onLogin(false, { accessToken, email: result.user.email, userId: result.user.user_id });
       navigate('/inspiration');
     } catch (error) {
       console.error('Login failed:', error);

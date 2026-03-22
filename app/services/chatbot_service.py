@@ -1,12 +1,21 @@
 from typing import Dict, List, Optional
-from sqlalchemy import or_
-from sqlalchemy.orm import Session, selectinload
-from app.models.book import Book
-from app.models.genre import Genre
+import os
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.models.mood import Mood
+from app.services.mood_recommendation.recommendation_engine import RecommendationEngine
 
 class ChatbotService:
-    def __init__(self, db: Session):
+    def __init__(
+        self,
+        db: Optional[Session] = None,
+        recommendation_engine: Optional[RecommendationEngine] = None,
+    ):
+        self.api_key = os.getenv("OPENAI_API_KEY", "")
         self.db = db
+        self.recommendation_engine = recommendation_engine
 
         self.emotions = [
             "happy", "sad", "angry", "excited", "scared", "romantic", 
@@ -16,50 +25,80 @@ class ChatbotService:
             "whimsical", "heartbroken", "triumphant"
         ]
 
-        self.mood_genre_keywords = {
-            "happy": ["comedy", "humor", "fiction", "feel-good"],
-            "sad": ["biography", "memoir", "self-help", "inspir"],
-            "angry": ["self-help", "psychology", "mindfulness"],
-            "excited": ["thriller", "adventure", "action", "fantasy"],
-            "scared": ["horror", "thriller", "mystery"],
-            "romantic": ["romance", "drama"],
-            "suspenseful": ["thriller", "mystery", "crime"],
-            "dark": ["horror", "psychological", "dystopian"],
-            "hopeful": ["self-help", "inspir", "biography"],
-            "nostalgic": ["classic", "historical", "memoir"],
-            "peaceful": ["poetry", "philosophy", "self-help"],
-            "curious": ["science", "history", "non-fiction", "mystery"],
-            "empowered": ["biography", "self-help", "leadership"],
-            "lonely": ["memoir", "self-help", "fiction"],
-            "grateful": ["memoir", "spiritual", "self-help"],
-            "confused": ["philosophy", "psychology", "self-help"],
-            "inspired": ["biography", "self-help", "inspir"],
-            "amused": ["comedy", "humor"],
-            "moved": ["drama", "memoir", "fiction"],
-            "adventurous": ["adventure", "fantasy", "science fiction", "thriller"],
-            "reflective": ["philosophy", "memoir", "classic"],
-            "whimsical": ["fantasy", "magical", "fiction"],
-            "heartbroken": ["romance", "self-help", "memoir"],
-            "triumphant": ["biography", "self-help", "history"],
-        }
-    
-    def detect_mood(self, message: str) -> List[str]:
+    def _detect_mood_from_message(self, message: str) -> Optional[str]:
         message_lower = message.lower()
-        
+
         mood_keywords = {
-            "happy": ["happy", "joy", "great", "wonderful"],
+            "happy": ["happy", "joy", "great", "wonderful", "delighted", "cheerful"],
             "sad": ["sad", "depressed", "down", "unhappy", "lonely"],
             "angry": ["angry", "mad", "frustrated", "annoyed"],
-            "excited": ["excited", "thrilled", "pumped"],
-            "romantic": ["love", "romantic", "romance"],
-            "adventurous": ["adventure", "exciting", "thrilling"]
+            "excited": ["excited", "thrilled", "pumped", "energized"],
+            "romantic": ["love", "romantic", "romance", "lovely", "passionate"],
+            "adventurous": ["adventure", "exciting", "thrilling", "journey"],
+            "peaceful": ["peaceful", "calm", "serene", "tranquil"],
+            "suspenseful": ["suspense", "mystery", "tense", "cliffhanger"],
+            "dark": ["dark", "grim", "eerie", "sinister"],
+            "hopeful": ["hope", "optimistic", "inspiring"],
+            "nostalgic": ["nostalgia", "memories", "reminiscent"],
+            "curious": ["curious", "intriguing", "mysterious", "fascinating"],
+            "empowered": ["empowered", "strong", "courageous"],
+            "lonely": ["lonely", "alone", "isolated"],
+            "grateful": ["grateful", "thankful", "appreciative"],
+            "confused": ["confused", "uncertain", "lost", "perplexed"],
+            "inspired": ["inspired", "motivated", "creative"],
+            "amused": ["amused", "funny", "humorous", "entertaining"],
+            "moved": ["moved", "touching", "emotional"],
+            "reflective": ["reflective", "thoughtful", "contemplative"],
+            "whimsical": ["whimsical", "magical", "fantastical"],
+            "heartbroken": ["heartbroken", "broken", "suffering"],
+            "triumphant": ["triumphant", "victorious", "celebrating"],
         }
-        
+
         for mood, keywords in mood_keywords.items():
             if any(keyword in message_lower for keyword in keywords):
-                return [mood]
-        
-        return ["peaceful"]
+                return mood
+
+        return None
+
+    def _get_user_mood(self, user_id: str) -> str:
+        """Get the user's most recent mood from the database."""
+        if not self.db:
+            return "peaceful"
+
+        try:
+            stmt = select(Mood).where(Mood.user_id == user_id).order_by(Mood.mood_date.desc())
+            mood_entry = self.db.execute(stmt).scalars().first()
+
+            if mood_entry:
+                return mood_entry.mood
+        except Exception as e:
+            print(f"Error fetching user mood: {e}")
+
+        return "peaceful"
+
+    def _get_mood_recommendations(self, user_id: str, mood: str) -> List[Dict]:
+        """Get book recommendations based on mood."""
+        if not self.recommendation_engine or not user_id:
+            return []
+
+        try:
+            recommendations = self.recommendation_engine.recommend_by_mood(user_id, mood, top_n=3)
+            books = []
+            for rec in recommendations:
+                book = rec["book"]
+                books.append(
+                    {
+                        "id": book.book_id,
+                        "title": getattr(book, "title", "Unknown"),
+                        "author": getattr(book, "author", "Unknown"),
+                        "similarity": rec.get("similarity", 0.0),
+                    }
+                )
+
+            return books
+        except Exception as e:
+            print(f"Error getting mood recommendations: {e}")
+            return []
     
     def generate_response(self, mood: str) -> str:
         responses = {
@@ -90,66 +129,34 @@ class ChatbotService:
         }
         return responses.get(mood, "Here are some books you might enjoy:")
 
-    def get_recommended_books(self, mood: str, limit: int = 3) -> List[Dict]:
-        """Return DB-backed recommendations using mood-to-genre keyword matching."""
-        keywords = self.mood_genre_keywords.get(mood, ["fiction", "self-help", "mystery"])
-
-        query = self.db.query(Book).options(selectinload(Book.genres))
-
-        genre_filters = [Book.genres.any(Genre.name.ilike(f"%{kw}%")) for kw in keywords]
-
-        if genre_filters:
-            matched_books = (
-                query.filter(or_(*genre_filters))
-                .order_by(Book.created_at.desc())
-                .limit(limit)
-                .all()
-            )
-        else:
-            matched_books = []
-
-        if len(matched_books) < limit:
-            matched_ids = {book.book_id for book in matched_books}
-            fallback_books = (
-                query.filter(~Book.book_id.in_(matched_ids) if matched_ids else True)
-                .order_by(Book.created_at.desc())
-                .limit(limit - len(matched_books))
-                .all()
-            )
-            matched_books.extend(fallback_books)
-
-        results = []
-        for book in matched_books:
-            results.append(
-                {
-                    "book_id": book.book_id,
-                    "title": book.title,
-                    "subtitle": book.subtitle,
-                    "abstract": book.abstract,
-                    "cover_image_url": book.cover_image_url,
-                    "genres": [genre.name for genre in (book.genres or [])],
-                }
-            )
-
-        return results
-    
     def process_message(self, message: str, user_id: Optional[str] = None) -> Dict:
-        moods = self.detect_mood(message)
-        primary_mood = moods[0]
-        
-        response_text = self.generate_response(primary_mood)
-        
-        books = self.get_recommended_books(primary_mood)
-        
+        # Determine mood candidates: message-based (explicit intent) and stored
+        # user mood (persistent preference)
+        message_mood = self._detect_mood_from_message(message)
+        user_mood = self._get_user_mood(user_id) if user_id and self.db else None
+
+        # Prioritize explicit message intent if it exists; otherwise use stored
+        # mood; fallback to peaceful.
+        mood = message_mood or user_mood or "peaceful"
+
+        # If the message is ambiguous and user mood is known, keep the user's
+        # mood to avoid unexpected shifts.
+        if message_mood is None and user_mood:
+            mood = user_mood
+
+        response_text = self.generate_response(mood)
+
+        books = self._get_mood_recommendations(user_id, mood) if self.recommendation_engine else []
+
         follow_ups = [
             "Would you like books in a different mood?",
             "Tell me more about what you're looking for",
             "Want more recommendations?"
         ]
-        
+
         return {
             "response": response_text,
-            "mood": primary_mood,
+            "mood": mood,
             "books": books,
             "follow_up_questions": follow_ups
         }

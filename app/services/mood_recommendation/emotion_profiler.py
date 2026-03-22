@@ -1,7 +1,3 @@
-import matplotlib.pyplot as plt
-import numpy as np
-
-
 class BookEmotionProfiler:
     def __init__(self, emotion_extractor):
         self.emotion_extractor = emotion_extractor
@@ -39,6 +35,14 @@ class BookEmotionProfiler:
         """
         Visualize emotion profile for a book
         """
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+        except ImportError as exc:
+            raise ImportError(
+                "Visualization dependencies are missing. Install matplotlib and numpy to use visualize_book_emotions()."
+            ) from exc
+
         if book_id not in self.book_profiles:
             print("Book not found")
             return
