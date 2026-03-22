@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Input } from './ui/input';
 import { BookOpen, Loader2, Search, Trash2 } from 'lucide-react';
 import { apiService, Book, BookshelfItem, ShelfStatus } from '../services/api';
@@ -120,7 +119,7 @@ export function Bookshelf({ accessToken }: BookshelfProps) {
 
   const BookCard = ({ item }: { item: ShelfBook }) => (
     <Card
-      className="cursor-pointer hover:shadow-lg transition-shadow"
+      className="cursor-pointer hover:shadow-lg transition-shadow h-full flex flex-col"
       onClick={() => navigate(`/book/${item.book_id}`)}
     >
       <div className="aspect-[2/3] relative overflow-hidden rounded-t-lg">
@@ -130,52 +129,56 @@ export function Bookshelf({ accessToken }: BookshelfProps) {
           className="w-full h-full object-cover"
         />
       </div>
-      <CardContent className="p-4">
-        <h3 className="font-semibold line-clamp-1">{item.book?.title || item.book_id}</h3>
-        {item.book?.subtitle && <p className="text-sm text-gray-600 mb-2">{item.book.subtitle}</p>}
-        {item.book?.abstract && <p className="text-xs text-gray-500 line-clamp-2 mb-2">{item.book.abstract}</p>}
-        <div className="flex items-center justify-between mb-3">
-          <Badge variant="secondary" className="text-[11px]">
-            {item.shelf_status.replaceAll('_', ' ')}
-          </Badge>
-          <span className="text-[11px] text-gray-500">Added {new Date(item.date_added).toLocaleDateString()}</span>
-        </div>
-        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+      <CardContent className="p-3 flex-1 flex flex-col">
+        <h3 className="font-semibold line-clamp-2 text-sm mb-2 flex-grow">{item.book?.title || item.book_id}</h3>
+        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
           {item.shelf_status !== 'want_to_read' && (
-            <Button size="sm" variant="outline" onClick={() => handleStatusChange(item.book_id, 'want_to_read')} disabled={savingBookId === item.book_id}>
+            <Button size="xs" variant="outline" onClick={() => handleStatusChange(item.book_id, 'want_to_read')} disabled={savingBookId === item.book_id} className="text-xs h-7 px-2">
               Want
             </Button>
           )}
           {item.shelf_status !== 'currently_reading' && (
-            <Button size="sm" variant="outline" onClick={() => handleStatusChange(item.book_id, 'currently_reading')} disabled={savingBookId === item.book_id}>
+            <Button size="xs" variant="outline" onClick={() => handleStatusChange(item.book_id, 'currently_reading')} disabled={savingBookId === item.book_id} className="text-xs h-7 px-2">
               Reading
             </Button>
           )}
           {item.shelf_status !== 'read' && (
-            <Button size="sm" variant="outline" onClick={() => handleStatusChange(item.book_id, 'read')} disabled={savingBookId === item.book_id}>
+            <Button size="xs" variant="outline" onClick={() => handleStatusChange(item.book_id, 'read')} disabled={savingBookId === item.book_id} className="text-xs h-7 px-2">
               Read
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={() => handleRemove(item.book_id)} disabled={savingBookId === item.book_id}>
-            <Trash2 className="size-4" />
+          <Button size="xs" variant="ghost" onClick={() => handleRemove(item.book_id)} disabled={savingBookId === item.book_id} className="ml-auto h-7 px-1">
+            <Trash2 className="size-3" />
           </Button>
         </div>
       </CardContent>
     </Card>
   );
 
-  const ShelfSection = ({ value, items }: { value: string; items: ShelfBook[] }) => (
-    <TabsContent value={value} className="mt-6">
+  const ShelfSection = ({ title, items }: { title: string; items: ShelfBook[] }) => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+        <Badge variant="secondary" className="text-lg px-3 py-1">
+          {items.length}
+        </Badge>
+      </div>
       {items.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">No books in this shelf.</div>
+        <div className="bg-gray-50 rounded-lg p-8 text-center text-gray-500">
+          <p>No books in this section yet.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {items.map((item) => (
-            <BookCard key={item.book_id} item={item} />
-          ))}
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-min">
+            {items.map((item) => (
+              <div key={item.book_id} className="flex-shrink-0 w-[160px]">
+                <BookCard item={item} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
-    </TabsContent>
+    </div>
   );
 
   return (
@@ -199,16 +202,11 @@ export function Bookshelf({ accessToken }: BookshelfProps) {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="want_to_read" className="w-full">
-        <TabsList>
-          <TabsTrigger value="want_to_read">Want to Read ({wantToReadBooks.length})</TabsTrigger>
-          <TabsTrigger value="currently_reading">Currently Reading ({currentlyReadingBooks.length})</TabsTrigger>
-          <TabsTrigger value="read">Read ({completedBooks.length})</TabsTrigger>
-        </TabsList>
-        <ShelfSection value="want_to_read" items={wantToReadBooks} />
-        <ShelfSection value="currently_reading" items={currentlyReadingBooks} />
-        <ShelfSection value="read" items={completedBooks} />
-      </Tabs>
+      <div className="space-y-12">
+        <ShelfSection title="Want to Read" items={wantToReadBooks} />
+        <ShelfSection title="Currently Reading" items={currentlyReadingBooks} />
+        <ShelfSection title="Finished Reading" items={completedBooks} />
+      </div>
 
       {shelfItems.length === 0 && (
         <div className="text-center py-12">
