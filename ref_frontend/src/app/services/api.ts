@@ -116,11 +116,11 @@ class ApiService {
   private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
     const url = `${API_BASE_URL}${endpoint}`;
     const config: RequestInit = {
+      ...options,
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...options?.headers,
       },
-      ...options,
     };
 
     const response = await fetch(url, config);
