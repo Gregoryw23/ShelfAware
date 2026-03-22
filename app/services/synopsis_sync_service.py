@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 from openai import OpenAI
 from app.models.book import Book
-from app.models.bookshelf import Bookshelf
+from app.models.review import Review
 from app.models.synopsis_moderation import SynopsisModeration
 import hashlib
 
@@ -14,56 +14,56 @@ logger = logging.getLogger(__name__)
 
 class SynopsisSyncService:
     """
-    Service to synchronize user-generated synopsis with community synopsis.
-    Can be manually triggered via admin endpoint to aggregate user synopses and generate/update community synopsis.
+    Service to generate community reviews from user reviews.
+    Can be manually triggered via admin endpoint to aggregate user reviews and propose community review updates.
     """
 
     def __init__(self, openai_api_key: Optional[str] = None):
         self.client = OpenAI(api_key=openai_api_key) if openai_api_key else None
 
-    def get_all_user_synopses(self, db: Session, book_id: Optional[str] = None) -> dict:
+    def get_all_user_reviews(self, db: Session, book_id: Optional[str] = None) -> dict:
         """
-        Extract all user-generated synopses from bookshelf.
+        Extract all user review bodies from reviews table grouped by book_id.
         
         Args:
             db: Database session
             book_id: Optional filter for specific book
             
         Returns:
-            Dictionary with book_id as key and list of synopses as value
+            Dictionary with book_id as key and list of review texts as value
         """
         try:
-            query = db.query(Bookshelf.book_id, Bookshelf.synopsis).filter(
-                Bookshelf.synopsis.isnot(None),
-                Bookshelf.synopsis != ""
+            query = db.query(Review.book_id, Review.body).filter(
+                Review.body.isnot(None),
+                Review.body != ""
             )
             
             if book_id:
-                query = query.filter(Bookshelf.book_id == book_id)
+                query = query.filter(Review.book_id == book_id)
             
             results = query.all()
             
-            synopses_by_book = {}
+            reviews_by_book = {}
             for row in results:
-                if row.book_id not in synopses_by_book:
-                    synopses_by_book[row.book_id] = []
-                synopses_by_book[row.book_id].append(row.synopsis)
+                if row.book_id not in reviews_by_book:
+                    reviews_by_book[row.book_id] = []
+                reviews_by_book[row.book_id].append(row.body)
             
-            logger.info(f"Retrieved synopses for {len(synopses_by_book)} books")
-            return synopses_by_book
+            logger.info(f"Retrieved reviews for {len(reviews_by_book)} books")
+            return reviews_by_book
             
         except Exception as e:
-            logger.error(f"Error retrieving user synopses: {str(e)}")
+            logger.error(f"Error retrieving user reviews: {str(e)}")
             raise
 
-    def generate_community_synopsis(self, title: str, user_synopses: list) -> str:
+    def generate_community_synopsis(self, title: str, user_reviews: list) -> str:
         """
-        Generate a community synopsis using OpenAI LLM.
-        Combines multiple user-generated synopses into a cohesive summary (2-4 sentences).
+        Generate a community review using OpenAI LLM.
+        Combines multiple user reviews into a cohesive 2-4 sentence community review.
         
         Args:
             title: Book title for context
-            user_synopses: List of user-generated synopses
+            user_reviews: List of user review texts
             
         Returns:
             Generated community synopsis or None if generation fails
@@ -73,26 +73,26 @@ class SynopsisSyncService:
                 logger.error("OpenAI client is not configured")
                 return None
 
-            # Filter out very short or duplicate synopses
-            filtered_synopses = list(set([s.strip() for s in user_synopses if len(s.strip()) > 10]))
+            # Filter out very short or duplicate review texts
+            filtered_synopses = list(set([s.strip() for s in user_reviews if len(s.strip()) > 10]))
             
             if not filtered_synopses:
-                logger.warning(f"No valid synopses found for book: {title}")
+                logger.warning(f"No valid reviews found for book: {title}")
                 return None
             
             synopses_text = "\n\n".join([f"- {s}" for s in filtered_synopses])
             
-            prompt = f"""You are a professional book summarizer. Based on the following user-generated synopses for the book "{title}", create a single, cohesive, and engaging community synopsis.
+            prompt = f"""You are a professional book summarizer. Based on the following user reviews for the book "{title}", create a single, cohesive, and engaging community review.
 
-The community synopsis must:
+The community review must:
 1. Be EXACTLY 2-4 sentences long
 2. Capture the core essence of the book
 3. Be objective and neutral in tone
 4. Avoid spoilers
 5. Be compelling to potential readers
-6. Include key themes or plot elements that multiple users mentioned
+6. Reflect common themes and reader sentiment mentioned by multiple users
 
-User-generated synopses:
+User reviews:
 {synopses_text}
 
 Generate only the synopsis without any additional commentary:"""
@@ -108,11 +108,11 @@ Generate only the synopsis without any additional commentary:"""
             )
             
             community_synopsis = response.choices[0].message.content.strip()
-            logger.info(f"Generated community synopsis for '{title}'")
+            logger.info(f"Generated community review for '{title}'")
             return community_synopsis
             
         except Exception as e:
-            logger.error(f"Error generating synopsis with OpenAI: {str(e)}")
+            logger.error(f"Error generating community review with OpenAI: {str(e)}")
             return None
 
     def compare_synopses(self, current_synopsis: Optional[str], user_synopses: list) -> bool:
@@ -280,7 +280,7 @@ Generate only the synopsis without any additional commentary:"""
             "status": item.status,
         }
 
-    def sync_all_synopses(self, db: Session) -> dict:
+    def generate_all_community_reviews(self, db: Session) -> dict:
         """
         Main method: Sync all book synopses by comparing user input and updating community synopsis.
         Can be called manually via admin endpoint.
@@ -292,18 +292,19 @@ Generate only the synopsis without any additional commentary:"""
             Dictionary with sync results
         """
         try:
-            logger.info("Starting synopsis sync...")
+            logger.info("Starting community review generation...")
             
-            # Get all user-generated synopses
-            user_synopses_by_book = self.get_all_user_synopses(db)
+            # Get all user review bodies grouped by book
+            user_synopses_by_book = self.get_all_user_reviews(db)
             
             if not user_synopses_by_book:
-                logger.info("No user synopses found")
+                logger.info("No user reviews found")
                 return {
                     "status": "success",
                     "timestamp": datetime.utcnow().isoformat(),
                     "total_books_processed": 0,
-                    "updated": 0,
+                    "proposed": 0,
+                    "refreshed": 0,
                     "skipped": 0,
                     "errors": []
                 }
@@ -365,11 +366,11 @@ Generate only the synopsis without any additional commentary:"""
                 "errors": errors
             }
             
-            logger.info(f"Synopsis sync completed: {result}")
+            logger.info(f"Community review generation completed: {result}")
             return result
             
         except Exception as e:
-            logger.error(f"Critical error in synopsis sync: {str(e)}")
+            logger.error(f"Critical error in community review generation: {str(e)}")
             return {
                 "status": "error",
                 "timestamp": datetime.utcnow().isoformat(),
@@ -380,3 +381,7 @@ Generate only the synopsis without any additional commentary:"""
                 "skipped": 0,
                 "errors": [{"error": str(e)}]
             }
+
+    # Backward-compatible alias for older callers.
+    def sync_all_synopses(self, db: Session) -> dict:
+        return self.generate_all_community_reviews(db)

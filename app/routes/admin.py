@@ -15,17 +15,17 @@ def list_users():
     return {"message": "Admin access granted"}
 
 
-@router.post("/sync-synopses")
-async def sync_synopses_manual(db: Session = Depends(get_db)):
+@router.post("/generate-community-reviews")
+async def generate_community_reviews(db: Session = Depends(get_db)):
     """
-    Manually trigger synopsis synchronization for all books.
+    Manually trigger community review generation for all books.
     
     This endpoint:
-    1. Retrieves all user-generated synopses from bookshelves
+    1. Retrieves all user review texts grouped by book_id
     2. Groups them by book_id
     3. For each book, determines if significant changes have occurred
-    4. If changes are significant, generates a new community synopsis using OpenAI LLM
-    5. Updates the CommunitySynopsis field in the books table
+    4. If changes are significant, generates a proposed community review using OpenAI LLM
+    5. Creates/refreshes moderation queue items for accept/reject
     
     Response:
     {
@@ -43,26 +43,32 @@ async def sync_synopses_manual(db: Session = Depends(get_db)):
             logger.error("OPENAI_API_KEY environment variable not set")
             raise HTTPException(
                 status_code=500,
-                detail="OPENAI_API_KEY not configured. Cannot generate synopses."
+                detail="OPENAI_API_KEY not configured. Cannot generate community reviews."
             )
         
-        logger.info("Manual synopsis sync initiated")
+        logger.info("Manual community review generation initiated")
         
         # Initialize service and run sync
         service = SynopsisSyncService(openai_api_key=openai_api_key)
-        result = service.sync_all_synopses(db)
+        result = service.generate_all_community_reviews(db)
         
-        logger.info(f"Manual synopsis sync completed: {result}")
+        logger.info(f"Manual community review generation completed: {result}")
         return result
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error during manual synopsis sync: {str(e)}", exc_info=True)
+        logger.error(f"Error during manual community review generation: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Error during synopsis synchronization: {str(e)}"
+            detail=f"Error during community review generation: {str(e)}"
         )
+
+
+@router.post("/sync-synopses")
+async def sync_synopses_manual(db: Session = Depends(get_db)):
+    """Legacy alias: use /admin/generate-community-reviews instead."""
+    return await generate_community_reviews(db)
 
 
 @router.get("/synopsis-moderation")

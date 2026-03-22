@@ -97,7 +97,7 @@ def home():
     return {"message": "Welcome to ShelfAware"}
 
 
-@app.post("/admin/sync-synopses")
+@app.post("/admin/trigger-scheduler-sync")
 def trigger_manual_sync():
     """
     Manual endpoint to trigger synopsis synchronization.

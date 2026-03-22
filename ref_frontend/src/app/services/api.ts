@@ -330,8 +330,8 @@ class ApiService {
   }
 
   // Admin synopsis moderation API
-  async triggerSynopsisSync(): Promise<SynopsisSyncResult> {
-    return this.request('/admin/sync-synopses', {
+  async triggerCommunityReviewGeneration(): Promise<SynopsisSyncResult> {
+    return this.request('/admin/generate-community-reviews', {
       method: 'POST',
     });
   }

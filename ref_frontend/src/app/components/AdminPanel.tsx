@@ -50,14 +50,14 @@ export function AdminPanel() {
   const handleSyncSynopsis = async () => {
     setIsSyncingSynopsis(true);
     try {
-      const result = await apiService.triggerSynopsisSync();
+      const result = await apiService.triggerCommunityReviewGeneration();
       await Promise.all([loadBooks(), loadModerationItems()]);
       toast.success(
-        `Sync complete. Proposed: ${result.proposed}, Refreshed: ${result.refreshed}, Skipped: ${result.skipped}`
+        `Generation complete. Proposed: ${result.proposed}, Refreshed: ${result.refreshed}, Skipped: ${result.skipped}`
       );
     } catch (error) {
       console.error('Error syncing summaries:', error);
-      toast.error('Failed to trigger synopsis sync');
+      toast.error('Failed to generate community reviews');
     } finally {
       setIsSyncingSynopsis(false);
     }
@@ -68,10 +68,10 @@ export function AdminPanel() {
     try {
       if (action === 'accept') {
         await apiService.acceptSynopsisModeration(moderationId);
-        toast.success('Synopsis accepted and community review updated');
+        toast.success('Community review accepted and updated');
       } else {
         await apiService.rejectSynopsisModeration(moderationId);
-        toast.success('Synopsis proposal rejected');
+        toast.success('Community review proposal rejected');
       }
       await Promise.all([loadBooks(), loadModerationItems()]);
     } catch (error) {
@@ -87,7 +87,7 @@ export function AdminPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-gray-600">Manage book data and moderate community synopsis updates</p>
+          <p className="text-gray-600">Manage book data and moderate community review updates</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={loadBooks} disabled={isLoadingBooks}>
@@ -95,7 +95,7 @@ export function AdminPanel() {
           </Button>
           <Button onClick={handleSyncSynopsis} disabled={isSyncingSynopsis}>
             <Sparkles className="size-4 mr-2" />
-            {isSyncingSynopsis ? 'Syncing...' : 'Sync Synopses'}
+            {isSyncingSynopsis ? 'Generating...' : 'Generate Community Reviews'}
           </Button>
         </div>
       </div>
@@ -108,7 +108,7 @@ export function AdminPanel() {
           </TabsTrigger>
           <TabsTrigger value="reviews">
             <AlertCircle className="size-4 mr-2" />
-            Synopsis Moderation ({moderationItems.length} pending)
+            Community Review Moderation ({moderationItems.length} pending)
           </TabsTrigger>
         </TabsList>
 
@@ -197,14 +197,14 @@ export function AdminPanel() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <AlertCircle className="size-5 mr-2 text-orange-500" />
-                Pending Synopsis Changes ({moderationItems.length})
+                Pending Community Review Changes ({moderationItems.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingModeration ? (
                 <p className="text-center text-gray-500 py-8">Loading moderation queue...</p>
               ) : moderationItems.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No pending synopsis changes</p>
+                <p className="text-center text-gray-500 py-8">No pending community review changes</p>
               ) : (
                 <div className="space-y-4">
                   {moderationItems.map((item) => (
@@ -213,7 +213,7 @@ export function AdminPanel() {
                         <div>
                           <h4 className="font-semibold">{item.book_title}</h4>
                           <p className="text-sm text-gray-600">
-                            Source synopses: {item.user_synopsis_count}
+                            Source reviews: {item.user_synopsis_count}
                           </p>
                         </div>
                         <div className="flex gap-2">
