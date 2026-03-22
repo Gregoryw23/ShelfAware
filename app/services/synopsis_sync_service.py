@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
@@ -194,7 +194,7 @@ Generate only the synopsis without any additional commentary:"""
             pending.proposed_synopsis = proposed_synopsis
             pending.user_synopsis_count = user_synopsis_count
             pending.user_content_hash = user_content_hash
-            pending.updated_at = datetime.utcnow()
+            pending.updated_at = datetime.now(timezone.utc)
             db.commit()
             return "updated"
 
@@ -249,8 +249,8 @@ Generate only the synopsis without any additional commentary:"""
 
         book.CommunitySynopsis = item.proposed_synopsis
         item.status = "accepted"
-        item.reviewed_at = datetime.utcnow()
-        item.updated_at = datetime.utcnow()
+        item.reviewed_at = datetime.now(timezone.utc)
+        item.updated_at = datetime.now(timezone.utc)
         db.commit()
 
         return {
@@ -270,8 +270,8 @@ Generate only the synopsis without any additional commentary:"""
             raise ValueError("Only pending items can be rejected")
 
         item.status = "rejected"
-        item.reviewed_at = datetime.utcnow()
-        item.updated_at = datetime.utcnow()
+        item.reviewed_at = datetime.now(timezone.utc)
+        item.updated_at = datetime.now(timezone.utc)
         db.commit()
 
         return {
@@ -301,7 +301,7 @@ Generate only the synopsis without any additional commentary:"""
                 logger.info("No user reviews found")
                 return {
                     "status": "success",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "total_books_processed": 0,
                     "proposed": 0,
                     "refreshed": 0,
@@ -358,7 +358,7 @@ Generate only the synopsis without any additional commentary:"""
             
             result = {
                 "status": "success",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "total_books_processed": len(user_synopses_by_book),
                 "proposed": proposed_count,
                 "refreshed": refreshed_count,
@@ -373,7 +373,7 @@ Generate only the synopsis without any additional commentary:"""
             logger.error(f"Critical error in community review generation: {str(e)}")
             return {
                 "status": "error",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "message": str(e),
                 "total_books_processed": 0,
                 "proposed": 0,

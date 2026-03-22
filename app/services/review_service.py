@@ -62,7 +62,7 @@ class ReviewService:
         rating = payload.get("rating")
         if rating is None or not (1 <= rating <= 5):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Rating must be between 1 and 5",
             )
 
@@ -114,7 +114,7 @@ class ReviewService:
             rating = update_data["rating"]
             if not (1 <= rating <= 5):
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="Rating must be between 1 and 5",
                 )
 

@@ -11,7 +11,7 @@ sys.stdout.reconfigure(encoding='utf-8') if hasattr(sys.stdout, 'reconfigure') e
 
 API_URL = "http://localhost:8000/api/chatbot/chat"
 
-def test_chatbot_images(message: str = "I am feeling happy", user_id: str = "test-user-123"):
+def run_chatbot_images_check(message: str = "I am feeling happy", user_id: str = "test-user-123"):
     """Test the chatbot endpoint and check if cover images are returned."""
     try:
         payload = {
@@ -70,4 +70,4 @@ def test_chatbot_images(message: str = "I am feeling happy", user_id: str = "tes
 if __name__ == "__main__":
     print("Testing Chatbot Image Loading Fix")
     print("=" * 60)
-    test_chatbot_images()
+    run_chatbot_images_check()
