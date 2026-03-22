@@ -89,9 +89,13 @@ class ChatbotService:
                 book = rec["book"]
                 books.append(
                     {
+                        "book_id": book.book_id,
                         "id": book.book_id,
                         "title": getattr(book, "title", "Unknown"),
                         "author": getattr(book, "author", "Unknown"),
+                        "cover_image_url": getattr(book, "cover_image_url", None),
+                        "subtitle": getattr(book, "subtitle", None),
+                        "abstract": getattr(book, "abstract", None),
                         "similarity": rec.get("similarity", 0.0),
                     }
                 )

@@ -19,10 +19,14 @@ class ChatRequest(BaseModel):
 
 
 class BookRecommendation(BaseModel):
+    book_id: Optional[str] = None
     id: str
     title: str
     author: str
     similarity: float
+    cover_image_url: Optional[str] = None
+    subtitle: Optional[str] = None
+    abstract: Optional[str] = None
 
 
 class ChatResponse(BaseModel):
