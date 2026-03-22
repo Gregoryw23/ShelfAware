@@ -136,6 +136,17 @@ def test_update_progress_paths(db, seeded_book):
     assert payload2["book_mood"] == "cozy, reflective"
 
 
+def test_update_progress_handles_invalid_existing_synopsis_json(db, seeded_book):
+    svc = BookshelfService(db)
+    item = _add_item(db, user_id="u1", book_id=seeded_book.book_id, status="currently_reading")
+    item.synopsis = "{not-valid-json"
+    db.commit()
+
+    updated = svc.update_progress(user_id="u1", book_id=seeded_book.book_id, progress_percent=10)
+    payload = json.loads(updated.synopsis)
+    assert payload["progress_percent"] == 10
+
+
 def test_list_timeline_stats(db, seeded_book, monkeypatch):
     svc = BookshelfService(db)
 
@@ -181,3 +192,46 @@ def test_list_timeline_stats(db, seeded_book, monkeypatch):
     assert empty_stats["avg_days_to_finish"] is None
     assert empty_stats["best_streak_days"] == 0
     assert empty_stats["current_streak_days"] == 0
+
+
+def test_get_stats_handles_none_finished_dates_and_streak_break(monkeypatch):
+    fixed_now = datetime(2026, 3, 22, 12, 0, 0)
+    monkeypatch.setattr(bs_mod, "_now", lambda: fixed_now)
+
+    # Includes one item with date_finished=None to trigger the defensive continue branch,
+    # and non-consecutive finished dates to trigger streak break.
+    items = [
+        type("Row", (), {
+            "date_finished": None,
+            "date_started": fixed_now - timedelta(days=3),
+            "date_added": fixed_now - timedelta(days=3),
+        })(),
+        type("Row", (), {
+            "date_finished": fixed_now,
+            "date_started": fixed_now - timedelta(days=1),
+            "date_added": fixed_now - timedelta(days=1),
+        })(),
+        type("Row", (), {
+            "date_finished": fixed_now - timedelta(days=2),
+            "date_started": fixed_now - timedelta(days=4),
+            "date_added": fixed_now - timedelta(days=4),
+        })(),
+    ]
+
+    class _FakeExecuteResult:
+        def scalars(self):
+            return self
+
+        def all(self):
+            return items
+
+    class _FakeDB:
+        def execute(self, _query):
+            return _FakeExecuteResult()
+
+    svc = BookshelfService(_FakeDB())
+    stats = svc.get_stats(user_id="u1")
+
+    assert stats["read_this_month"] == 2
+    assert stats["best_streak_days"] == 1
+    assert stats["current_streak_days"] == 1

@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coverage Summary</title>
+  <style>
+    :root {
+      --bg: #f7f4ef;
+      --panel: #fffdf9;
+      --ink: #1f2933;
+      --muted: #5f6c7b;
+      --accent: #b45309;
+      --ok: #0f766e;
+      --warn: #b45309;
+      --bad: #b91c1c;
+      --border: #e5dccf;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(circle at top right, #efe6d8, var(--bg));
+      color: var(--ink);
+      line-height: 1.4;
+    }
+
+    .wrap {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #fffdf9, #f5ede1);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(31, 41, 51, 0.08);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+      letter-spacing: 0.2px;
+    }
+
+    .sub {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .cards {
+      margin-top: 18px;
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+
+    .good { color: var(--ok); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+
+    .section {
+      margin-top: 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .section h2 {
+      margin: 0 0 10px;
+      font-size: 1.15rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      padding: 8px 6px;
+      vertical-align: top;
+    }
+
+    th {
+      color: #334155;
+      font-weight: 600;
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .foot {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: var(--bad);
+      font-weight: 600;
+    }
+
+    @media (max-width: 700px) {
+      .value { font-size: 1.35rem; }
+      h1 { font-size: 1.55rem; }
+      table { font-size: 0.86rem; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="hero">
+      <h1>Coverage Summary Dashboard</h1>
+      <p class="sub">Snapshot source: coverage_backend.json</p>
+      <p class="sub" id="snapshot-ts">Timestamp: loading...</p>
+
+      <section class="cards" aria-label="coverage summary cards">
+        <article class="card">
+          <div class="label">Statement Coverage</div>
+          <div id="statement-coverage" class="value warn">Loading...</div>
+        </article>
+        <article class="card">
+          <div class="label">Covered Statements</div>
+          <div id="covered-statements" class="value">Loading...</div>
+        </article>
+        <article class="card">
+          <div class="label">Missing Statements</div>
+          <div id="missing-statements" class="value bad">Loading...</div>
+        </article>
+        <article class="card">
+          <div class="label">Branch Coverage</div>
+          <div id="branch-coverage" class="value bad">Loading...</div>
+        </article>
+      </section>
+      <p id="load-error" class="note error" hidden></p>
+    </header>
+
+    <section class="section">
+      <h2>Branch Coverage Status</h2>
+      <p id="branch-status">Loading branch coverage status...</p>
+    </section>
+
+    <section class="section">
+      <h2>Lowest Statement Coverage Files</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Coverage</th>
+            <th>Statements</th>
+            <th>Missing</th>
+          </tr>
+        </thead>
+        <tbody id="low-files-tbody">
+          <tr><td colspan="4">Loading...</td></tr>
+        </tbody>
+      </table>
+      <p class="foot" id="foot-note">This page loads data from coverage_backend.json at runtime.</p>
+    </section>
+  </main>
+
+  <script>
+    function formatInt(value) {
+      return Number(value || 0).toLocaleString();
+    }
+
+    function coverageClass(percent) {
+      if (percent >= 90) return "good";
+      if (percent >= 75) return "warn";
+      return "bad";
+    }
+
+    function renderCoverage(data) {
+      const totals = data.totals || {};
+      const meta = data.meta || {};
+      const files = data.files || {};
+
+      const statementPercent = Number(totals.percent_covered || 0);
+      const coveredLines = Number(totals.covered_lines || 0);
+      const numStatements = Number(totals.num_statements || 0);
+      const missingLines = Number(totals.missing_lines || 0);
+      const branchEnabled = Boolean(meta.branch_coverage);
+
+      const statementNode = document.getElementById("statement-coverage");
+      statementNode.textContent = statementPercent.toFixed(2) + "%";
+      statementNode.className = "value " + coverageClass(statementPercent);
+
+      document.getElementById("covered-statements").textContent =
+        formatInt(coveredLines) + " / " + formatInt(numStatements);
+
+      const missingNode = document.getElementById("missing-statements");
+      missingNode.textContent = formatInt(missingLines);
+      missingNode.className = "value " + (missingLines === 0 ? "good" : "bad");
+
+      const branchNode = document.getElementById("branch-coverage");
+      const branchStatusNode = document.getElementById("branch-status");
+
+      if (!branchEnabled) {
+        branchNode.textContent = "Not Collected";
+        branchNode.className = "value bad";
+        branchStatusNode.textContent =
+          "Branch coverage is disabled in this snapshot (meta.branch_coverage = false), so branch-level percentages are unavailable.";
+      } else {
+        const coveredBranches = Number(totals.covered_branches || 0);
+        const numBranches = Number(totals.num_branches || 0);
+        const branchPercent = numBranches > 0 ? (coveredBranches / numBranches) * 100 : 100;
+        branchNode.textContent = branchPercent.toFixed(2) + "%";
+        branchNode.className = "value " + coverageClass(branchPercent);
+        branchStatusNode.textContent =
+          "Branch coverage is enabled. Covered branches: " +
+          formatInt(coveredBranches) + " / " + formatInt(numBranches) + ".";
+      }
+
+      const ts = meta.timestamp ? String(meta.timestamp) : "Unavailable";
+      document.getElementById("snapshot-ts").textContent = "Timestamp: " + ts;
+
+      const lowRows = Object.entries(files)
+        .map(([path, payload]) => {
+          const summary = (payload && payload.summary) || {};
+          const statements = Number(summary.num_statements || 0);
+          return {
+            path: path.replace(/\\/g, "/"),
+            coverage: Number(summary.percent_covered || 100),
+            statements,
+            missing: Number(summary.missing_lines || 0)
+          };
+        })
+        .filter((item) => item.statements > 0)
+        .sort((a, b) => a.coverage - b.coverage)
+        .slice(0, 12);
+
+      const tbody = document.getElementById("low-files-tbody");
+      tbody.innerHTML = "";
+
+      if (lowRows.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = "<td colspan=\"4\">No file-level statement data found.</td>";
+        tbody.appendChild(tr);
+      } else {
+        for (const row of lowRows) {
+          const tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + row.path + "</td>" +
+            "<td>" + row.coverage.toFixed(2) + "%</td>" +
+            "<td>" + formatInt(row.statements) + "</td>" +
+            "<td>" + formatInt(row.missing) + "</td>";
+          tbody.appendChild(tr);
+        }
+      }
+    }
+
+    async function loadCoverage() {
+      const errorNode = document.getElementById("load-error");
+      try {
+        const response = await fetch("coverage_backend.json", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        const data = await response.json();
+        renderCoverage(data);
+      } catch (err) {
+        errorNode.hidden = false;
+        errorNode.textContent =
+          "Could not load coverage_backend.json. Open this file from the project root using a local server or VS Code preview that allows fetch().";
+        document.getElementById("foot-note").textContent =
+          "Runtime loading failed; verify coverage_backend.json exists beside this file and is accessible.";
+      }
+    }
+
+    loadCoverage();
+  </script>
+</body>
+</html>
