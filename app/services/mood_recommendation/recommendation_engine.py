@@ -427,6 +427,7 @@ class RecommendationEngine:
         return dot / (norm_a * norm_b)
 
     def recommend_by_mood(self, user_id: str, mood: str, top_n: int = 5):
+
         """Recommend unread books based on emotional similarity to the given mood."""
         print(f"\n{'='*60}")
         print("MOOD-BASED RECOMMENDATION START")
@@ -449,6 +450,44 @@ class RecommendationEngine:
         print("\n[STEP 2] User's Bookshelf:")
         print(f"  User has read {len(read_book_ids)} books")
 
+
+        """
+        Recommend books based on user's mood.
+
+        Args:
+            user_id: User identifier
+            mood: Mood string (e.g., "happy", "sad")
+            top_n: Number of recommendations to return
+
+        Returns:
+            List of dicts: [{"book": Book, "similarity": float}]
+        """
+        print(f"\n{'='*60}")
+        print(f"MOOD-BASED RECOMMENDATION START")
+        print(f"{'='*60}")
+        print(f"Input: user_id={user_id}, mood='{mood}', top_n={top_n}")
+
+        # Convert mood string to emotion scores
+        mood_emotion_result = self.emotion_extractor.extract_emotions(mood)
+        mood_scores = mood_emotion_result.get("scores", {})
+        print(f"\n[STEP 1] Mood Emotion Analysis:")
+        print(f"  Mood: '{mood}'")
+        print(f"  Emotion scores: {mood_scores}")
+
+        # If no emotions detected, use a default profile for the mood
+        if not any(score > 0 for score in mood_scores.values()):
+            # Fallback: create a simple vector with the mood as primary emotion
+            mood_scores = {mood: 100.0}
+            print(f"  No emotions detected, using fallback: {mood_scores}")
+
+        # Get user's read books to filter out
+        read_items = self.get_user_read_books(user_id)
+        read_book_ids = {item.book_id for item in read_items}
+        print(f"\n[STEP 2] User's Bookshelf:")
+        print(f"  User has read {len(read_book_ids)} books")
+
+        # Find books with similar emotion profiles
+
         candidates = []
         for book in self.get_books():
             if book.book_id in read_book_ids:
@@ -464,12 +503,20 @@ class RecommendationEngine:
 
             candidates.append({"book": book, "similarity": similarity})
 
+
+
+        # Sort by similarity and keep only non-zero matches unless nothing matches
+
         candidates.sort(key=lambda x: x["similarity"], reverse=True)
         non_zero_candidates = [c for c in candidates if c["similarity"] > 0.0]
 
         if non_zero_candidates:
             results = non_zero_candidates[:top_n]
         else:
+
+
+            # No emotional match; fall back to highest-rated books not already read
+
             print("  No books with non-zero mood similarity; falling back to top-rated unread books")
             rates = []
             for book in self.get_books():
@@ -480,8 +527,17 @@ class RecommendationEngine:
             rates.sort(key=lambda x: x[0], reverse=True)
             results = [{"book": r[1], "similarity": 0.0} for r in rates[:top_n]]
 
+
         print("\n[STEP 4] Final Results:")
         print(f"  Returning {len(results)} recommendations")
         for i, result in enumerate(results):
             print(f"  {i + 1}. {result['book'].title} (similarity: {result['similarity']:.3f})")
+
+        print(f"\n[STEP 4] Final Results:")
+        print(f"  Returning {len(results)} recommendations")
+        for i, result in enumerate(results):
+            print(f"  {i+1}. {result['book'].title} (similarity: {result['similarity']:.3f})")
+
+
         return results
+

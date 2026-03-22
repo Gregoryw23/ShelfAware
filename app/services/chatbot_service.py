@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.mood import Mood
 from app.services.mood_recommendation.recommendation_engine import RecommendationEngine
 
+
 class ChatbotService:
     def __init__(
         self,
@@ -18,10 +19,10 @@ class ChatbotService:
         self.recommendation_engine = recommendation_engine
 
         self.emotions = [
-            "happy", "sad", "angry", "excited", "scared", "romantic", 
-            "suspenseful", "dark", "hopeful", "nostalgic", "peaceful", 
-            "curious", "empowered", "lonely", "grateful", "confused", 
-            "inspired", "amused", "moved", "adventurous", "reflective", 
+            "happy", "sad", "angry", "excited", "scared", "romantic",
+            "suspenseful", "dark", "hopeful", "nostalgic", "peaceful",
+            "curious", "empowered", "lonely", "grateful", "confused",
+            "inspired", "amused", "moved", "adventurous", "reflective",
             "whimsical", "heartbroken", "triumphant"
         ]
 
@@ -99,7 +100,7 @@ class ChatbotService:
         except Exception as e:
             print(f"Error getting mood recommendations: {e}")
             return []
-    
+
     def generate_response(self, mood: str) -> str:
         responses = {
             "happy": "That's wonderful! Here are some joyful reads:",
@@ -130,22 +131,18 @@ class ChatbotService:
         return responses.get(mood, "Here are some books you might enjoy:")
 
     def process_message(self, message: str, user_id: Optional[str] = None) -> Dict:
-        # Determine mood candidates: message-based (explicit intent) and stored
-        # user mood (persistent preference)
+        # Determine mood candidates: message-based (explicit intent) and stored user mood (persistent preference)
         message_mood = self._detect_mood_from_message(message)
         user_mood = self._get_user_mood(user_id) if user_id and self.db else None
 
-        # Prioritize explicit message intent if it exists; otherwise use stored
-        # mood; fallback to peaceful.
+        # Prioritize explicit message intent if it exists; otherwise use stored mood; fallback to peaceful
         mood = message_mood or user_mood or "peaceful"
 
-        # If the message is ambiguous and user mood is known, keep the user's
-        # mood to avoid unexpected shifts.
+        # If the message is ambiguous and user mood is known, keep the user's mood to avoid unexpected shifts
         if message_mood is None and user_mood:
             mood = user_mood
 
         response_text = self.generate_response(mood)
-
         books = self._get_mood_recommendations(user_id, mood) if self.recommendation_engine else []
 
         follow_ups = [
