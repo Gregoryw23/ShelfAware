@@ -1,6 +1,6 @@
 import os
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.services.cognito_service import RoleChecker, CognitoAdminRole
 from app.services.synopsis_sync_service import SynopsisSyncService
@@ -63,3 +63,47 @@ async def sync_synopses_manual(db: Session = Depends(get_db)):
             status_code=500,
             detail=f"Error during synopsis synchronization: {str(e)}"
         )
+
+
+@router.get("/synopsis-moderation")
+def list_synopsis_moderation(
+    status: str = Query(default="pending", pattern="^(pending|accepted|rejected|all)$"),
+    db: Session = Depends(get_db),
+):
+    try:
+        service = SynopsisSyncService(openai_api_key=os.getenv("OPENAI_API_KEY", ""))
+        items = service.list_moderation_items(db, status_filter=status)
+        return {
+            "status": "success",
+            "count": len(items),
+            "items": items,
+        }
+    except Exception as e:
+        logger.error(f"Error listing synopsis moderation items: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to list moderation items: {str(e)}")
+
+
+@router.post("/synopsis-moderation/{moderation_id}/accept")
+def accept_synopsis_moderation(moderation_id: str, db: Session = Depends(get_db)):
+    try:
+        service = SynopsisSyncService(openai_api_key=os.getenv("OPENAI_API_KEY", ""))
+        result = service.accept_moderation_item(db, moderation_id)
+        return {"status": "success", "result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error accepting synopsis moderation item: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to accept moderation item: {str(e)}")
+
+
+@router.post("/synopsis-moderation/{moderation_id}/reject")
+def reject_synopsis_moderation(moderation_id: str, db: Session = Depends(get_db)):
+    try:
+        service = SynopsisSyncService(openai_api_key=os.getenv("OPENAI_API_KEY", ""))
+        result = service.reject_moderation_item(db, moderation_id)
+        return {"status": "success", "result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error rejecting synopsis moderation item: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to reject moderation item: {str(e)}")

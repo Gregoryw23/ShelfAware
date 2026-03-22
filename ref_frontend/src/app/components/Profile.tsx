@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Star, BookOpen, Award, TrendingUp, Calendar, Heart } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { mockBooks, mockMoodHistory } from '../data/mockData';
@@ -19,14 +21,60 @@ interface ProfileProps {
   userId: string | null;
 }
 
+const COUNTRIES = [
+  'Australia',
+  'Brazil',
+  'Canada',
+  'China',
+  'France',
+  'Germany',
+  'India',
+  'Indonesia',
+  'Japan',
+  'Malaysia',
+  'Mexico',
+  'Netherlands',
+  'New Zealand',
+  'Philippines',
+  'Singapore',
+  'South Korea',
+  'Spain',
+  'Thailand',
+  'United Arab Emirates',
+  'United Kingdom',
+  'United States',
+  'Vietnam',
+];
+
+function parseFavoriteGenres(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      return parsed.map((genre) => String(genre).trim()).filter(Boolean);
+    }
+  } catch {
+    // Support legacy comma-separated values.
+  }
+
+  return trimmed
+    .split(',')
+    .map((genre) => genre.trim())
+    .filter(Boolean);
+}
+
 export function Profile({ accessToken, userEmail, userId }: ProfileProps) {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isActivityLoading, setIsActivityLoading] = useState(true);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isLoadingGenres, setIsLoadingGenres] = useState(false);
   const [booksById, setBooksById] = useState<Record<string, Book>>({});
   const [myShelfItems, setMyShelfItems] = useState<BookshelfItem[]>([]);
   const [myReviews, setMyReviews] = useState<Review[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
   const [profileForm, setProfileForm] = useState({
     display_name: '',
     profile_photo_url: '',
@@ -125,6 +173,23 @@ export function Profile({ accessToken, userEmail, userId }: ProfileProps) {
     loadActivity();
   }, [accessToken, userId]);
 
+  useEffect(() => {
+    const loadGenres = async () => {
+      try {
+        setIsLoadingGenres(true);
+        const genres = await apiService.getGenres();
+        setAvailableGenres(genres);
+      } catch (error) {
+        console.error('Failed to load genres:', error);
+        setAvailableGenres([]);
+      } finally {
+        setIsLoadingGenres(false);
+      }
+    };
+
+    loadGenres();
+  }, []);
+
   const userInitials = useMemo(() => {
     const source = profileForm.display_name || userEmail || 'User';
     return source
@@ -137,6 +202,21 @@ export function Profile({ accessToken, userEmail, userId }: ProfileProps) {
 
   const handleProfileFieldChange = (field: keyof typeof profileForm, value: string) => {
     setProfileForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const selectedFavoriteGenres = useMemo(
+    () => parseFavoriteGenres(profileForm.favorite_genres_json),
+    [profileForm.favorite_genres_json]
+  );
+
+  const handleGenreToggle = (genre: string, checked: boolean) => {
+    const nextGenres = checked
+      ? Array.from(new Set([...selectedFavoriteGenres, genre]))
+      : selectedFavoriteGenres.filter((item) => item !== genre);
+    setProfileForm((prev) => ({
+      ...prev,
+      favorite_genres_json: JSON.stringify(nextGenres),
+    }));
   };
 
   const handleStartEditingProfile = () => {
@@ -278,11 +358,22 @@ export function Profile({ accessToken, userEmail, userId }: ProfileProps) {
                     </div>
                     <div className="space-y-1">
                       <label className="text-sm font-medium text-gray-700">Location</label>
-                      <Input
-                        value={profileForm.location}
-                        placeholder="Enter location"
-                        onChange={(e) => handleProfileFieldChange('location', e.target.value)}
-                      />
+                      <Select
+                        value={profileForm.location || '__none'}
+                        onValueChange={(value) => handleProfileFieldChange('location', value === '__none' ? '' : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">Not specified</SelectItem>
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country} value={country}>
+                              {country}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <label className="text-sm font-medium text-gray-700">Profile Photo URL</label>
@@ -302,11 +393,37 @@ export function Profile({ accessToken, userEmail, userId }: ProfileProps) {
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <label className="text-sm font-medium text-gray-700">Favorite Genres</label>
-                      <Input
-                        value={profileForm.favorite_genres_json}
-                        placeholder='["Fantasy", "Mystery"]'
-                        onChange={(e) => handleProfileFieldChange('favorite_genres_json', e.target.value)}
-                      />
+                      {isLoadingGenres ? (
+                        <p className="text-sm text-gray-500">Loading genres...</p>
+                      ) : availableGenres.length === 0 ? (
+                        <p className="text-sm text-gray-500">No genres available from database.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-44 overflow-y-auto rounded-md border p-3">
+                            {availableGenres.map((genre) => {
+                              const isChecked = selectedFavoriteGenres.includes(genre);
+                              return (
+                                <label key={genre} className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                  <Checkbox
+                                    checked={isChecked}
+                                    onCheckedChange={(checked) => handleGenreToggle(genre, Boolean(checked))}
+                                  />
+                                  <span>{genre}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedFavoriteGenres.length > 0 ? (
+                              selectedFavoriteGenres.map((genre) => (
+                                <Badge key={genre} variant="secondary">{genre}</Badge>
+                              ))
+                            ) : (
+                              <span className="text-sm text-gray-500">No genres selected.</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -332,7 +449,15 @@ export function Profile({ accessToken, userEmail, userId }: ProfileProps) {
                     </div>
                     <div className="md:col-span-2">
                       <p className="text-gray-500">Favorite Genres</p>
-                      <p className="font-medium text-gray-900 break-all">{profileForm.favorite_genres_json || '-'}</p>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {selectedFavoriteGenres.length > 0 ? (
+                          selectedFavoriteGenres.map((genre) => (
+                            <Badge key={genre} variant="secondary">{genre}</Badge>
+                          ))
+                        ) : (
+                          <p className="font-medium text-gray-900">-</p>
+                        )}
+                      </div>
                     </div>
                   </div>
 

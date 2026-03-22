@@ -5,14 +5,16 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { BookOpen, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
-import { mockReviews } from '../data/mockData';
-import { apiService, Book } from '../services/api';
+import { apiService, Book, SynopsisModerationItem } from '../services/api';
 import { toast } from 'sonner';
 
 export function AdminPanel() {
   const [books, setBooks] = useState<Book[]>([]);
   const [isLoadingBooks, setIsLoadingBooks] = useState(true);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState<string | null>(null);
+  const [isSyncingSynopsis, setIsSyncingSynopsis] = useState(false);
+  const [isLoadingModeration, setIsLoadingModeration] = useState(false);
+  const [moderationItems, setModerationItems] = useState<SynopsisModerationItem[]>([]);
+  const [processingModerationId, setProcessingModerationId] = useState<string | null>(null);
 
   const loadBooks = async () => {
     try {
@@ -29,41 +31,73 @@ export function AdminPanel() {
 
   useEffect(() => {
     loadBooks();
+    loadModerationItems();
   }, []);
 
-  const handleGenerateSummary = async (bookId: string) => {
-    setIsGeneratingSummary(bookId);
+  const loadModerationItems = async () => {
     try {
-      await fetch('http://localhost:8000/admin/sync-synopses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      setIsLoadingModeration(true);
+      const response = await apiService.getSynopsisModeration('pending');
+      setModerationItems(response.items || []);
+    } catch (error) {
+      console.error('Error loading moderation items:', error);
+      toast.error('Failed to load synopsis moderation queue');
+    } finally {
+      setIsLoadingModeration(false);
+    }
+  };
 
-      await loadBooks();
-      toast.success('Synopsis sync triggered and books reloaded');
+  const handleSyncSynopsis = async () => {
+    setIsSyncingSynopsis(true);
+    try {
+      const result = await apiService.triggerSynopsisSync();
+      await Promise.all([loadBooks(), loadModerationItems()]);
+      toast.success(
+        `Sync complete. Proposed: ${result.proposed}, Refreshed: ${result.refreshed}, Skipped: ${result.skipped}`
+      );
     } catch (error) {
       console.error('Error syncing summaries:', error);
       toast.error('Failed to trigger synopsis sync');
     } finally {
-      setIsGeneratingSummary(null);
+      setIsSyncingSynopsis(false);
     }
   };
 
-  const pendingReviews = mockReviews.filter((r) => !r.moderated);
-  const moderatedReviews = mockReviews.filter((r) => r.moderated);
+  const handleModerationAction = async (moderationId: string, action: 'accept' | 'reject') => {
+    setProcessingModerationId(moderationId);
+    try {
+      if (action === 'accept') {
+        await apiService.acceptSynopsisModeration(moderationId);
+        toast.success('Synopsis accepted and community review updated');
+      } else {
+        await apiService.rejectSynopsisModeration(moderationId);
+        toast.success('Synopsis proposal rejected');
+      }
+      await Promise.all([loadBooks(), loadModerationItems()]);
+    } catch (error) {
+      console.error('Error handling moderation action:', error);
+      toast.error('Failed to process moderation action');
+    } finally {
+      setProcessingModerationId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-gray-600">Manage database book data and moderate reviews</p>
+          <p className="text-gray-600">Manage book data and moderate community synopsis updates</p>
         </div>
-        <Button variant="outline" onClick={loadBooks} disabled={isLoadingBooks}>
-          Refresh Books
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={loadBooks} disabled={isLoadingBooks}>
+            Refresh Books
+          </Button>
+          <Button onClick={handleSyncSynopsis} disabled={isSyncingSynopsis}>
+            <Sparkles className="size-4 mr-2" />
+            {isSyncingSynopsis ? 'Syncing...' : 'Sync Synopses'}
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="books" className="w-full">
@@ -74,7 +108,7 @@ export function AdminPanel() {
           </TabsTrigger>
           <TabsTrigger value="reviews">
             <AlertCircle className="size-4 mr-2" />
-            Review Moderation ({pendingReviews.length} pending)
+            Synopsis Moderation ({moderationItems.length} pending)
           </TabsTrigger>
         </TabsList>
 
@@ -92,19 +126,18 @@ export function AdminPanel() {
                     <TableHead className="w-[360px]">Community Review</TableHead>
                     <TableHead>Pages</TableHead>
                     <TableHead>Published</TableHead>
-                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoadingBooks ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         Loading books from app.db...
                       </TableCell>
                     </TableRow>
                   ) : books.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         No books found in database
                       </TableCell>
                     </TableRow>
@@ -150,23 +183,6 @@ export function AdminPanel() {
                         <TableCell>
                           {book.published_date ? new Date(book.published_date).getFullYear() : '-'}
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleGenerateSummary(book.book_id)}
-                            disabled={isGeneratingSummary === book.book_id}
-                          >
-                            {isGeneratingSummary === book.book_id ? (
-                              <>Syncing...</>
-                            ) : (
-                              <>
-                                <Sparkles className="size-3 mr-1" />
-                                Sync Synopsis
-                              </>
-                            )}
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -177,88 +193,65 @@ export function AdminPanel() {
         </TabsContent>
 
         <TabsContent value="reviews" className="mt-6">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <AlertCircle className="size-5 mr-2 text-orange-500" />
-                  Pending Reviews ({pendingReviews.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {pendingReviews.length === 0 ? (
-                  <p className="text-center text-gray-500 py-8">No pending reviews</p>
-                ) : (
-                  <div className="space-y-4">
-                    {pendingReviews.map((review) => {
-                      const book = books.find((b) => b.book_id === review.bookId);
-                      return (
-                        <div key={review.id} className="border rounded-lg p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h4 className="font-semibold">{book?.title}</h4>
-                              <p className="text-sm text-gray-600">
-                                Rating: {review.rating}/5 • {new Date(review.date).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => toast.success('Review approved')}>
-                                <CheckCircle className="size-4 mr-1" />
-                                Approve
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => toast.success('Review rejected')}>
-                                Reject
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap gap-2 mb-2">
-                            {review.emotion.map((emotion) => (
-                              <Badge key={emotion} variant="outline" className="text-xs">
-                                {emotion}
-                              </Badge>
-                            ))}
-                          </div>
-                          <p className="text-sm text-gray-700">{review.content}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <CheckCircle className="size-5 mr-2 text-green-500" />
-                  Approved Reviews ({moderatedReviews.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <AlertCircle className="size-5 mr-2 text-orange-500" />
+                Pending Synopsis Changes ({moderationItems.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingModeration ? (
+                <p className="text-center text-gray-500 py-8">Loading moderation queue...</p>
+              ) : moderationItems.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">No pending synopsis changes</p>
+              ) : (
                 <div className="space-y-4">
-                  {moderatedReviews.slice(0, 5).map((review) => {
-                    const book = books.find((b) => b.book_id === review.bookId);
-                    return (
-                      <div key={review.id} className="border rounded-lg p-4 bg-green-50">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h4 className="font-semibold">{book?.title}</h4>
-                            <p className="text-sm text-gray-600">
-                              Rating: {review.rating}/5 • {review.helpful} helpful votes
-                            </p>
-                          </div>
-                          <Badge variant="secondary" className="bg-green-200">
-                            Approved
-                          </Badge>
+                  {moderationItems.map((item) => (
+                    <div key={item.moderation_id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold">{item.book_title}</h4>
+                          <p className="text-sm text-gray-600">
+                            Source synopses: {item.user_synopsis_count}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-700">{review.content}</p>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleModerationAction(item.moderation_id, 'accept')}
+                            disabled={processingModerationId === item.moderation_id}
+                          >
+                            <CheckCircle className="size-4 mr-1" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleModerationAction(item.moderation_id, 'reject')}
+                            disabled={processingModerationId === item.moderation_id}
+                          >
+                            Reject
+                          </Button>
+                        </div>
                       </div>
-                    );
-                  })}
+
+                      <div className="grid md:grid-cols-2 gap-3">
+                        <div className="rounded-md border p-3 bg-gray-50">
+                          <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Current Community Review</p>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.current_synopsis || '-'}</p>
+                        </div>
+                        <div className="rounded-md border p-3 bg-orange-50">
+                          <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Proposed Update</p>
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap">{item.proposed_synopsis}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

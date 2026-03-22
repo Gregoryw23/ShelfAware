@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import engine, Base
 
 # Import models so SQLAlchemy registers tables/relationships
-from app.models import user, book, genre, book_genre, bookshelf  # noqa: F401
+from app.models import user, book, genre, book_genre, bookshelf, synopsis_moderation  # noqa: F401
 try:
     from app.services.synopsis_scheduler import SynopsisScheduler
 except ImportError:

@@ -8,3 +8,4 @@ from .mood import Mood
 from .review import Review
 from .book_genre import BookGenre
 from .user_profile import UserProfile
+from .synopsis_moderation import SynopsisModeration

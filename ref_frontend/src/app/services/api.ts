@@ -135,6 +135,35 @@ export interface BookshelfStats {
   best_streak_days: number;
 }
 
+export interface SynopsisSyncResult {
+  status: string;
+  timestamp: string;
+  total_books_processed: number;
+  proposed: number;
+  refreshed: number;
+  skipped: number;
+  errors: Array<{ book_id?: string; error: string }>;
+}
+
+export interface SynopsisModerationItem {
+  moderation_id: string;
+  book_id: string;
+  book_title: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  current_synopsis?: string | null;
+  proposed_synopsis: string;
+  user_synopsis_count: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  reviewed_at?: string | null;
+}
+
+export interface SynopsisModerationListResponse {
+  status: string;
+  count: number;
+  items: SynopsisModerationItem[];
+}
+
 class ApiService {
   private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
     const url = `${API_BASE_URL}${endpoint}`;
@@ -177,6 +206,10 @@ class ApiService {
 
   async getBook(bookId: string): Promise<Book> {
     return this.request(`/books/${bookId}`);
+  }
+
+  async getGenres(): Promise<string[]> {
+    return this.request('/books/genres');
   }
 
   // Reviews API
@@ -293,6 +326,29 @@ class ApiService {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
+    });
+  }
+
+  // Admin synopsis moderation API
+  async triggerSynopsisSync(): Promise<SynopsisSyncResult> {
+    return this.request('/admin/sync-synopses', {
+      method: 'POST',
+    });
+  }
+
+  async getSynopsisModeration(status: 'pending' | 'accepted' | 'rejected' | 'all' = 'pending'): Promise<SynopsisModerationListResponse> {
+    return this.request(`/admin/synopsis-moderation?status=${status}`);
+  }
+
+  async acceptSynopsisModeration(moderationId: string): Promise<{ status: string; result: { moderation_id: string; book_id: string; status: string; book_title: string; community_synopsis: string } }> {
+    return this.request(`/admin/synopsis-moderation/${moderationId}/accept`, {
+      method: 'POST',
+    });
+  }
+
+  async rejectSynopsisModeration(moderationId: string): Promise<{ status: string; result: { moderation_id: string; book_id: string; status: string } }> {
+    return this.request(`/admin/synopsis-moderation/${moderationId}/reject`, {
+      method: 'POST',
     });
   }
 }

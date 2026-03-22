@@ -1,15 +1,24 @@
 #Code 3
 from fastapi import APIRouter, HTTPException, Depends, status
+from sqlalchemy.orm import Session
 from app.schemas.book import BookCreate, BookUpdate, BookRead
 from app.services.book_service import BookService
 from app.dependencies.services import get_book_service
 from app.dependencies.roles import required_admin_role  # 👈 add this
+from app.dependencies.db import get_db
+from app.models.genre import Genre
 
 router = APIRouter()
 
 @router.get("/", response_model=list[BookRead])
 def get_books(service: BookService = Depends(get_book_service)):
     return service.get_books()
+
+
+@router.get("/genres", response_model=list[str])
+def get_genres(db: Session = Depends(get_db)):
+    rows = db.query(Genre.name).order_by(Genre.name.asc()).all()
+    return [name for (name,) in rows]
 
 @router.get("/{book_id}", response_model=BookRead)
 def get_book(book_id: str, service: BookService = Depends(get_book_service)):
