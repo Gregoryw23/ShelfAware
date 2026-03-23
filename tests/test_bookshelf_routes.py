@@ -12,7 +12,7 @@ with patch("app.services.cognito_service.boto3.client") as mock_boto_client, \
     mock_boto_client.return_value = MagicMock()
     from app.main import app
 
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_db_user
 from app.routes.bookshelf import _extract_user_id
 
 
@@ -118,7 +118,7 @@ class TestExtractUserId:
 class TestBookshelfRoutes:
     def test_add_book_success(self, client, mock_bookshelf_service, mock_user_obj, sample_bookshelf_read):
         mock_bookshelf_service.add_to_shelf.return_value = sample_bookshelf_read
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.post("/bookshelf/", json={"book_id": "book-123"})
@@ -138,7 +138,7 @@ class TestBookshelfRoutes:
 
     def test_add_book_not_found(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.add_to_shelf.side_effect = ValueError("Book not found")
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.post("/bookshelf/", json={"book_id": "missing-book"})
@@ -148,7 +148,7 @@ class TestBookshelfRoutes:
 
     def test_add_book_duplicate(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.add_to_shelf.side_effect = ValueError("DUPLICATE")
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.post("/bookshelf/", json={"book_id": "book-123"})
@@ -158,7 +158,7 @@ class TestBookshelfRoutes:
 
     def test_add_book_other_value_error(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.add_to_shelf.side_effect = ValueError("Bad request")
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.post("/bookshelf/", json={"book_id": "book-123"})
@@ -167,7 +167,7 @@ class TestBookshelfRoutes:
         assert response.json()["detail"] == "Bad request"
 
     def test_add_book_unauthenticated(self, client):
-        app.dependency_overrides[get_current_user] = lambda: None
+        app.dependency_overrides[get_current_db_user] = lambda: None
 
         response = client.post("/bookshelf/", json={"book_id": "book-123"})
 
@@ -176,7 +176,7 @@ class TestBookshelfRoutes:
 
     def test_list_my_shelf_success(self, client, mock_bookshelf_service, mock_user_obj, sample_bookshelf_read):
         mock_bookshelf_service.list_shelf.return_value = [sample_bookshelf_read]
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.get("/bookshelf/")
@@ -199,7 +199,7 @@ class TestBookshelfRoutes:
 
     def test_list_my_shelf_with_filters(self, client, mock_bookshelf_service, mock_user_obj, sample_bookshelf_read):
         mock_bookshelf_service.list_shelf.return_value = [sample_bookshelf_read]
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.get("/bookshelf/?status=read&sort=date_added&order=asc")
@@ -217,7 +217,7 @@ class TestBookshelfRoutes:
 
     def test_remove_book_success(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.remove_from_shelf.return_value = None
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.delete("/bookshelf/book-123")
@@ -232,7 +232,7 @@ class TestBookshelfRoutes:
 
     def test_remove_book_not_found(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.remove_from_shelf.side_effect = ValueError("NOT_FOUND")
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.delete("/bookshelf/book-123")
@@ -242,7 +242,7 @@ class TestBookshelfRoutes:
 
     def test_remove_book_other_error(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.remove_from_shelf.side_effect = ValueError("Bad request")
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.delete("/bookshelf/book-123")
@@ -254,7 +254,7 @@ class TestBookshelfRoutes:
         updated = dict(sample_bookshelf_read)
         updated["shelf_status"] = "read"
         mock_bookshelf_service.update_status.return_value = updated
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.patch("/bookshelf/book-123/status", json={"shelf_status": "read"})
@@ -274,7 +274,7 @@ class TestBookshelfRoutes:
 
     def test_update_status_not_found(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.update_status.side_effect = ValueError("NOT_FOUND")
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.patch("/bookshelf/book-123/status", json={"shelf_status": "read"})
@@ -284,7 +284,7 @@ class TestBookshelfRoutes:
 
     def test_update_status_other_error(self, client, mock_bookshelf_service, mock_user_obj):
         mock_bookshelf_service.update_status.side_effect = ValueError("Bad request")
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.patch("/bookshelf/book-123/status", json={"shelf_status": "read"})
@@ -294,7 +294,7 @@ class TestBookshelfRoutes:
 
     def test_timeline_success(self, client, mock_bookshelf_service, mock_user_obj, sample_bookshelf_read):
         mock_bookshelf_service.get_timeline.return_value = [sample_bookshelf_read]
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.get("/bookshelf/timeline")
@@ -315,7 +315,7 @@ class TestBookshelfRoutes:
             "read": 3,
             "total": 6,
         }
-        app.dependency_overrides[get_current_user] = lambda: mock_user_obj
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
 
         with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
             response = client.get("/bookshelf/stats")

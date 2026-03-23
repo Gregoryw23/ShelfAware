@@ -1,16 +1,18 @@
 # app/routes/bookshelf.py
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Optional, Literal
+from pydantic import ValidationError
 
 from app.dependencies.db import get_db
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import get_current_db_user
 
 from app.services.bookshelf_service import BookshelfService
 from app.schemas.bookshelf import (
     BookshelfCreate,
     BookshelfRead,
+    BookshelfProgressUpdate,
     BookshelfStatusUpdate,
 )
 
@@ -51,7 +53,7 @@ def _extract_user_id(current_user) -> str:
 def add_book(
     payload: BookshelfCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_db_user),
 ):
     service = get_bookshelf_service(db)
     user_id = _extract_user_id(current_user)
@@ -78,7 +80,7 @@ def list_my_shelf(
     ),
     order: Literal["asc", "desc"] = Query(default="desc", description="Sort order"),
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_db_user),
 ):
     service = get_bookshelf_service(db)
     user_id = _extract_user_id(current_user)
@@ -91,7 +93,7 @@ def list_my_shelf(
 def remove_book(
     book_id: str,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_db_user),
 ):
     service = get_bookshelf_service(db)
     user_id = _extract_user_id(current_user)
@@ -112,7 +114,7 @@ def update_status(
     book_id: str,
     payload: BookshelfStatusUpdate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_db_user),
 ):
     service = get_bookshelf_service(db)
     user_id = _extract_user_id(current_user)
@@ -126,11 +128,38 @@ def update_status(
         raise HTTPException(status_code=400, detail=msg)
 
 
+@router.patch("/{book_id}/progress", response_model=BookshelfRead)
+def update_progress(
+    book_id: str,
+    payload: BookshelfProgressUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_db_user),
+):
+    service = get_bookshelf_service(db)
+    user_id = _extract_user_id(current_user)
+
+    try:
+        return service.update_progress(
+            user_id=user_id,
+            book_id=book_id,
+            progress_percent=payload.progress_percent,
+            mood=payload.mood,
+            moods=payload.moods,
+            book_mood=payload.book_mood,
+            book_moods=payload.book_moods,
+        )
+    except ValueError as e:
+        msg = str(e)
+        if msg == "NOT_FOUND":
+            raise HTTPException(status_code=404, detail="Book not found on shelf")
+        raise HTTPException(status_code=400, detail=msg)
+
+
 # 5) Timeline
 @router.get("/timeline", response_model=list[BookshelfRead])
 def timeline(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_db_user),
 ):
     service = get_bookshelf_service(db)
     user_id = _extract_user_id(current_user)
@@ -141,7 +170,7 @@ def timeline(
 @router.get("/stats")
 def stats(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_current_db_user),
 ):
     service = get_bookshelf_service(db)
     user_id = _extract_user_id(current_user)

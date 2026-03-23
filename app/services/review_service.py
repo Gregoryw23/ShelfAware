@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 from typing import Sequence, Optional
-from datetime import date
 
 from fastapi import HTTPException, status
 from sqlalchemy import select, func
@@ -12,7 +11,6 @@ from sqlalchemy.orm import Session
 from app.models.review import Review
 from app.models.book import Book
 from app.models.user import User
-from app.models.mood import Mood
 
 from app.schemas.review import ReviewCreate, ReviewUpdate
 
@@ -22,10 +20,11 @@ class ReviewService:
         self.db = db
 
     # --- Internal Helpers ---
-    def _ensure_book_exists(self, book_id: str) -> None:
-        exists = self.db.scalar(select(Book.book_id).where(Book.book_id == book_id))
-        if not exists:
+    def _ensure_book_exists(self, book_id: str) -> str:
+        title = self.db.scalar(select(Book.title).where(Book.book_id == book_id))
+        if not title:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
+        return str(title)
 
     def _ensure_user_exists(self, user_id: str) -> None:
         exists = self.db.scalar(select(User.user_id).where(User.user_id == user_id))
@@ -40,33 +39,38 @@ class ReviewService:
 
     # --- Commands ---
     def add_review(self, *, book_id: str, user_id: str, review_data: ReviewCreate) -> Review:
-        self._ensure_book_exists(book_id)
+        book_title = self._ensure_book_exists(book_id)
         self._ensure_user_exists(user_id)
 
         payload = review_data.model_dump(exclude_unset=True)
 
         # Pull API-only fields (not DB columns)
-        mood_text: Optional[str] = payload.pop("mood", None)
+        book_mood_text: Optional[str] = payload.pop("book_mood", None)
+        legacy_mood_text: Optional[str] = payload.pop("mood", None)
         comment_text: Optional[str] = payload.pop("comment", None)
+        if book_mood_text is None:
+            book_mood_text = legacy_mood_text
 
         # Map API comment -> DB body if provided
         if comment_text is not None and payload.get("body") is None:
             payload["body"] = comment_text
 
+        # Persist the book title on the review row for downstream UI consumers.
+        if not payload.get("title"):
+            payload["title"] = book_title
+
         rating = payload.get("rating")
         if rating is None or not (1 <= rating <= 5):
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Rating must be between 1 and 5",
             )
 
         review = Review(book_id=book_id, user_id=user_id, **payload)
+        # Book-level mood is attached to the review response, not daily user mood logs.
+        setattr(review, "book_mood", (book_mood_text or "").strip() or None)
+        setattr(review, "mood", getattr(review, "book_mood", None))
         self.db.add(review)
-
-        # Mood handling (use mood_text from earlier pop)
-        if mood_text:
-            mood_entry = Mood(user_id=user_id, mood=mood_text, mood_date=date.today())
-            self.db.add(mood_entry)
 
         try:
             self.db.commit()
@@ -75,6 +79,8 @@ class ReviewService:
             # optional: attach comment for response serialization convenience
             # (does not persist to DB, just helps schemas expecting "comment")
             setattr(review, "comment", review.body)
+            setattr(review, "book_mood", (book_mood_text or "").strip() or None)
+            setattr(review, "mood", getattr(review, "book_mood", None))
 
             return review
         except IntegrityError as e:
@@ -93,8 +99,11 @@ class ReviewService:
 
         update_data = review_data.model_dump(exclude_unset=True)
 
-        mood_text: Optional[str] = update_data.pop("mood", None)
+        book_mood_text: Optional[str] = update_data.pop("book_mood", None)
+        legacy_mood_text: Optional[str] = update_data.pop("mood", None)
         comment_text: Optional[str] = update_data.pop("comment", None)
+        if book_mood_text is None:
+            book_mood_text = legacy_mood_text
 
         # Map API comment -> DB body if provided
         if comment_text is not None and "body" not in update_data:
@@ -105,7 +114,7 @@ class ReviewService:
             rating = update_data["rating"]
             if not (1 <= rating <= 5):
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail="Rating must be between 1 and 5",
                 )
 
@@ -113,20 +122,13 @@ class ReviewService:
         for key, value in update_data.items():
             setattr(review, key, value)
 
-        # Mood update (use mood_text variable)
-        if mood_text is not None:
-            existing_mood = self.db.scalar(
-                select(Mood).where(Mood.user_id == acting_user_id, Mood.mood_date == date.today())
-            )
-            if existing_mood:
-                existing_mood.mood = mood_text
-            else:
-                self.db.add(Mood(user_id=acting_user_id, mood=mood_text, mood_date=date.today()))
-
         self.db.commit()
         self.db.refresh(review)
 
         setattr(review, "comment", review.body)
+        if book_mood_text is not None:
+            setattr(review, "book_mood", (book_mood_text or "").strip() or None)
+            setattr(review, "mood", getattr(review, "book_mood", None))
         return review
 
     def delete_review(self, review_id: str, acting_user_id: str) -> None:
@@ -160,6 +162,10 @@ class ReviewService:
         reviews = self.db.scalars(stmt).all()
         for r in reviews:
             setattr(r, "comment", r.body)
+            if not hasattr(r, "book_mood"):
+                setattr(r, "book_mood", None)
+            if not hasattr(r, "mood"):
+                setattr(r, "mood", getattr(r, "book_mood", None))
         return reviews
 
     def get_average_rating(self, book_id: str) -> float | None:

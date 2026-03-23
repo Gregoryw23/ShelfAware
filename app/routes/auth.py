@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from app.db.database import get_db
 
 from app.models.user import User
+from app.models.user_profile import UserProfile
 from app.services.cognito_service import CognitoService
 from app.exceptions import ServiceException
 
@@ -74,11 +75,21 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         tokens = cognito_service.authenticate_user(username=email, password=payload.password)
 
     except ServiceException as e:
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
     
     user = db.query(User).filter(User.email == email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found in database")
+
+    # Ensure a profile exists for every authenticated user.
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user.user_id).first()
+    if not profile:
+        default_display_name = (user.email or "user").split("@")[0]
+        db.add(UserProfile(user_id=user.user_id, display_name=default_display_name))
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
     
     return {"message": "Login successful", "user": user, "tokens": tokens}
 

@@ -41,6 +41,8 @@ class UserProfileUpdate(BaseModel):
     bio: Optional[str] = None
     location: Optional[str] = None
     favorite_genres_json: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
 
 # POST request model
 class UserProfileCreate(UserProfileBase):

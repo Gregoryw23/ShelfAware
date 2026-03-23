@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict    
-from typing import Optional, Literal, Dict
+from typing import Optional, Literal, Dict, List
 from datetime import datetime, date
 
 
@@ -7,11 +7,22 @@ ShelfStatus = Literal["want_to_read", "currently_reading", "read"]
 
 
 class BookshelfCreate(BaseModel):
-    book_id: str
+    """Schema for adding a book to shelf. Expects: {\"book_id\": \"string_id\"}"""
+    book_id: str = Field(..., description="The ID of the book to add")
+    
+    model_config = ConfigDict(from_attributes=True, extra='forbid')
 
 
 class BookshelfStatusUpdate(BaseModel):
     shelf_status: ShelfStatus
+
+
+class BookshelfProgressUpdate(BaseModel):
+    progress_percent: int = Field(..., ge=0, le=100)
+    mood: Optional[str] = None
+    moods: Optional[List[str]] = None
+    book_mood: Optional[str] = None
+    book_moods: Optional[List[str]] = None
 
 
 class BookshelfRead(BaseModel):

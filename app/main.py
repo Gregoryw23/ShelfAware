@@ -2,13 +2,16 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import engine, Base
 
 # Import models so SQLAlchemy registers tables/relationships
-from app.models import user, book, genre, book_genre, bookshelf  # noqa: F401
-
-from app.services.synopsis_scheduler import SynopsisScheduler
+from app.models import user, book, genre, book_genre, bookshelf, synopsis_moderation  # noqa: F401
+try:
+    from app.services.synopsis_scheduler import SynopsisScheduler
+except ImportError:
+    SynopsisScheduler = None
 
 # Import routers (ROUTES, not models)
 from app.routes import auth, books, chatbot
@@ -36,7 +39,9 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize and start synopsis scheduler
     try:
         openai_api_key = os.getenv("OPENAI_API_KEY")
-        if openai_api_key:
+        if SynopsisScheduler is None:
+            logger.warning("Synopsis scheduler module not available. Synopsis sync disabled.")
+        elif openai_api_key:
             # Initialize scheduler
             SynopsisScheduler.initialize(openai_api_key=openai_api_key)
             # Start scheduler (runs daily at midnight UTC by default)
@@ -50,8 +55,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown: Stop the scheduler
-    SynopsisScheduler.stop()
-    logger.info("Synopsis scheduler stopped")
+    if SynopsisScheduler is not None:
+        SynopsisScheduler.stop()
+        logger.info("Synopsis scheduler stopped")
 
 
 app = FastAPI(
@@ -59,6 +65,22 @@ app = FastAPI(
     description="An API for managing books and integrating with Ollama and ChromaDB",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+# Configure CORS to allow frontend requests
+# Use environment variable CORS_ORIGINS to customize on deploy (comma-separated values)
+# Default includes local dev and both static host ports (80 + 8000).
+cors_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:4173,http://localhost:4176,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:3000,http://54.179.230.205,http://54.179.230.205:80,http://54.179.230.205:8000"
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routes
@@ -82,7 +104,7 @@ def home():
     return {"message": "Welcome to ShelfAware"}
 
 
-@app.post("/admin/sync-synopses")
+@app.post("/admin/trigger-scheduler-sync")
 def trigger_manual_sync():
     """
     Manual endpoint to trigger synopsis synchronization.
@@ -91,6 +113,8 @@ def trigger_manual_sync():
     Requires admin access in production.
     """
     try:
+        if SynopsisScheduler is None:
+            return {"status": "error", "message": "Synopsis scheduler module not available."}
         result = SynopsisScheduler.add_manual_job()
         return {"status": "success", "data": result}
     except Exception as e:

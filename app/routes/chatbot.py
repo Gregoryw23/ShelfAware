@@ -1,7 +1,6 @@
-
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List
 from sqlalchemy.orm import Session
 
 from app.dependencies.db import get_db
@@ -13,15 +12,22 @@ from app.services.bookshelf_service import BookshelfService
 
 router = APIRouter()
 
+
 class ChatRequest(BaseModel):
     message: str
     user_id: Optional[str] = None
 
+
 class BookRecommendation(BaseModel):
+    book_id: Optional[str] = None
     id: str
     title: str
     author: str
     similarity: float
+    cover_image_url: Optional[str] = None
+    subtitle: Optional[str] = None
+    abstract: Optional[str] = None
+
 
 class ChatResponse(BaseModel):
     response: str
@@ -29,8 +35,9 @@ class ChatResponse(BaseModel):
     books: List[BookRecommendation]
     follow_up_questions: List[str]
 
+
 def get_chatbot_service(db: Session = Depends(get_db)) -> ChatbotService:
-    """Create a ChatbotService with dependencies."""
+    """Create a ChatbotService with recommendation dependencies."""
     book_service = BookService(db)
     review_service = ReviewService(db)
     bookshelf_service = BookshelfService(db)
@@ -42,10 +49,11 @@ def get_chatbot_service(db: Session = Depends(get_db)) -> ChatbotService:
     )
     return ChatbotService(db=db, recommendation_engine=recommendation_engine)
 
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    chatbot_service: ChatbotService = Depends(get_chatbot_service)
+    chatbot_service: ChatbotService = Depends(get_chatbot_service),
 ):
     result = chatbot_service.process_message(request.message, request.user_id)
     return result

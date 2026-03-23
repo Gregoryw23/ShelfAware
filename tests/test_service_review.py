@@ -168,11 +168,28 @@ class TestAddReview:
             review_data=review_data
         )
         
-        # ASSERT: Verify mood entry was added
+        # ASSERT: Verify review is added with book-level mood mapping
         calls = [call[0][0] for call in mock_db.add.call_args_list]
-        from app.models.mood import Mood
-        mood_added = any(isinstance(call, Mood) for call in calls)
-        assert mood_added
+        from app.models.review import Review
+        added_review = next((call for call in calls if isinstance(call, Review)), None)
+        assert added_review is not None
+        assert getattr(added_review, "book_mood", None) == "happy"
+        assert getattr(added_review, "mood", None) == "happy"
+
+    def test_add_review_service_guard_rejects_none_rating(self, review_service, mock_db):
+        """Service-level guard should reject payloads with None rating even if schema is bypassed."""
+        mock_db.scalar.side_effect = ["book-456", "user-123"]
+        review_data = ReviewCreate.model_construct(rating=None, comment="No rating")
+
+        with pytest.raises(HTTPException) as exc_info:
+            review_service.add_review(
+                book_id="book-456",
+                user_id="user-123",
+                review_data=review_data,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert "Rating must be between 1 and 5" in exc_info.value.detail
 
 
 class TestUpdateReview:
@@ -443,3 +460,36 @@ class TestGetAverageRating:
         
         # ASSERT
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_update_review_service_guard_rejects_out_of_range_rating(self, review_service, mock_db, sample_review):
+        """Service-level guard should reject out-of-range rating if schema validation is bypassed."""
+        mock_db.scalar.return_value = "user-123"
+        mock_db.get.return_value = sample_review
+        update_data = ReviewUpdate.model_construct(rating=6)
+
+        with pytest.raises(HTTPException) as exc_info:
+            review_service.update_review(
+                review_id="review-789",
+                acting_user_id="user-123",
+                review_data=update_data,
+            )
+
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+        assert "Rating must be between 1 and 5" in exc_info.value.detail
+
+    def test_update_review_sets_book_mood_from_legacy_mood(self, review_service, mock_db, sample_review):
+        """Legacy mood field should map onto book_mood and mood attributes on response object."""
+        mock_db.scalar.return_value = "user-123"
+        mock_db.get.return_value = sample_review
+        mock_db.commit = lambda: None
+        mock_db.refresh = lambda x: None
+        update_data = ReviewUpdate.model_construct(mood=" calm ")
+
+        result = review_service.update_review(
+            review_id="review-789",
+            acting_user_id="user-123",
+            review_data=update_data,
+        )
+
+        assert getattr(result, "book_mood", None) == "calm"
+        assert getattr(result, "mood", None) == "calm"

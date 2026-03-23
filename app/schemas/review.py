@@ -8,7 +8,9 @@ from datetime import datetime
 class ReviewBase(BaseModel):
     rating: int = Field(..., ge=1, le=5, description="Rating between 1 and 5")
     comment: Optional[str] = Field(None, description="Review comment (stored as 'body' in DB)")
-    mood: Optional[str] = Field(None, description="Optional user mood as free text")
+    book_mood: Optional[str] = Field(None, description="Optional mood for this specific book")
+    # Backward compatibility for older clients.
+    mood: Optional[str] = Field(None, description="Deprecated alias for book_mood")
 
 
 class ReviewCreate(ReviewBase):
@@ -18,6 +20,7 @@ class ReviewCreate(ReviewBase):
 class ReviewUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     comment: Optional[str] = None
+    book_mood: Optional[str] = None
     mood: Optional[str] = None
 
 
@@ -36,6 +39,8 @@ class ReviewOut(BaseModel):
 
     # API-friendly alias
     comment: Optional[str] = None
+    book_mood: Optional[str] = None
+    mood: Optional[str] = None
 
     created_at: datetime
     updated_at: datetime
@@ -48,4 +53,6 @@ class ReviewOut(BaseModel):
         data = ReviewOut.model_validate(review_obj).model_dump()
         if data.get("comment") is None:
             data["comment"] = data.get("body")
+        if data.get("book_mood") is None and data.get("mood") is not None:
+            data["book_mood"] = data.get("mood")
         return ReviewOut(**data)
