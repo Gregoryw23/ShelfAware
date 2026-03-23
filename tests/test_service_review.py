@@ -1,6 +1,5 @@
 # Test to create, update, delete, and retrieve reviews.
 
-
 import pytest
 from fastapi import status, HTTPException
 from pydantic import ValidationError

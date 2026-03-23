@@ -9,6 +9,7 @@ from app.services.review_service import ReviewService
 from app.dependencies.auth import get_current_user
 
 
+
 @pytest.fixture(autouse=True)
 def mock_env_vars():
     """Mock environment variables."""
