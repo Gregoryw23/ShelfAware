@@ -56,9 +56,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create static directory for tests
-        run: mkdir -p app/static
-
       - name: Run tests with pytest
         env:
           LLM_PROVIDER: OPENAI

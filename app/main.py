@@ -133,4 +133,9 @@ def trigger_manual_sync():
 
 # Mount the static files directory to serve the frontend.
 # This must be mounted AFTER all API routes are registered.
-app.mount("/", SPAStaticFiles(directory="app/static"), name="static-app")
+# Ensure the static directory exists to avoid RuntimeError during initialization.
+static_dir = "app/static"
+if not os.path.exists(static_dir):
+    os.makedirs(static_dir)
+
+app.mount("/", SPAStaticFiles(directory=static_dir), name="static-app")
