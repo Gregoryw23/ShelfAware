@@ -1,20 +1,31 @@
-# Use an official Python base image
+# Stage 1: Build the frontend application
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY ref_frontend/package*.json ./
+RUN npm install
+
+# Copy the rest of the frontend source code and build the application
+COPY ref_frontend/ .
+RUN npm run build
+
+# Stage 2: Build the final application image
 FROM python:3.11-slim
+WORKDIR /app
 
-# Create a working directory inside the container
-WORKDIR /shelfaware_app
+# Install backend dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip -r requirements.txt
 
-# Copy your requirements file
-COPY requirements.txt /shelfaware_app/requirements.txt
+# Copy backend application code
+COPY ./app ./app
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the built frontend assets from the frontend-builder stage
+COPY --from=frontend-builder /app/dist ./app/static
 
-# Copy the rest of your application code
-COPY . /shelfaware_app
-
-# Expose port 8000 (FastAPI default)
+# Expose the port the app runs on
 EXPOSE 8000
 
-# Start FastAPI with uvicorn
+# Command to run the application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,7 +1,9 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import engine, Base
@@ -22,6 +24,18 @@ from app.routes import user_profile
 from app.routes import review
 from app.routes import recommendation_routes
 
+
+# This helper class is for serving the Single Page Application (SPA).
+# It falls back to serving 'index.html' for any path that is not found,
+# which allows client-side routing to work correctly.
+class SPAStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as ex:
+            if ex.status_code == 404:
+                return await super().get_response("index.html", scope)
+            raise ex
 
 # Configure logging
 logging.basicConfig(
@@ -99,11 +113,6 @@ app.include_router(
 app.include_router(chatbot.router, prefix="/api/chatbot", tags=["Chatbot"])
 
 
-@app.get("/")
-def home():
-    return {"message": "Welcome to ShelfAware"}
-
-
 @app.post("/admin/trigger-scheduler-sync")
 def trigger_manual_sync():
     """
@@ -122,7 +131,6 @@ def trigger_manual_sync():
         return {"status": "error", "message": str(e)}
 
 
-@app.get("/favicon.ico")
-async def favicon():
-    """Return no content for favicon requests to avoid browser 404 noise."""
-    return Response(status_code=204)
+# Mount the static files directory to serve the frontend.
+# This must be mounted AFTER all API routes are registered.
+app.mount("/", SPAStaticFiles(directory="app/static"), name="static-app")
