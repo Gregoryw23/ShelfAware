@@ -22,8 +22,18 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip -r requirements.txt
 
-# Copy backend application code
+# 1. Copy the database file specifically to the WORKDIR (/app)
+# This ensures it's where the code expects it to be.
+COPY app.db ./app.db
+COPY chromadb ./chromadb
+
+# 2. Copy the rest of the backend application code
 COPY . ./app
+
+# 3. Give the container permission to read/write to the DB file
+# SQLite needs to create temporary "journal" files in the same folder.
+RUN chmod 666 /app/app.db
+RUN chmod 666 /app/chromadb
 
 # Copy the built frontend assets from the frontend-builder stage
 COPY --from=frontend-builder /app/dist ./app/static
