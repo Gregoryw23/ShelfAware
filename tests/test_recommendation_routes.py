@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -10,7 +10,7 @@ from app.routes import recommendation_routes
 
 
 def make_book(book_id="book-1", title="Book One"):
-    return Book(book_id=book_id, title=title, created_at=datetime.utcnow())
+    return Book(book_id=book_id, title=title, created_at=datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 def test_get_recommendation_engine_wires_services():

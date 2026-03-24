@@ -1,6 +1,8 @@
 from app.main import app
 
 from app.models.user import User
+from app.models.user_profile import UserProfile
+from sqlalchemy.exc import IntegrityError
 
 # TEST ROUTES: /auth
 
@@ -207,6 +209,73 @@ def test_auth_login_unconfirmed_user(client, mocker, db):
         "password": "Password123!"
     })
     assert response.status_code == 401
+
+
+def test_auth_registration_db_integrity_error_returns_409(client, mocker, db):
+    mocker.patch(
+        "app.routes.auth.cognito_service.register_user",
+        return_value={"UserSub": "sub", "UserConfirmed": False},
+    )
+    mocker.patch.object(db, "commit", side_effect=IntegrityError(None, None, None))
+
+    response = client.post(
+        "/auth/registration",
+        json={
+            "username": "test_user",
+            "email": "integrity@test.com",
+            "password": "Password123!",
+        },
+    )
+
+    assert response.status_code == 409
+
+
+def test_auth_login_with_existing_profile_skips_profile_creation(client, mocker, db):
+    user = User(email="profile@test.com", cognito_sub="sub-profile")
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.add(UserProfile(user_id=user.user_id, display_name="existing-profile"))
+    db.commit()
+
+    mocker.patch(
+        "app.routes.auth.cognito_service.authenticate_user",
+        return_value={
+            "access_token": "token1",
+            "id_token": "token2",
+            "refresh_token": "token3",
+        },
+    )
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "profile@test.com", "password": "Password123!"},
+    )
+
+    assert response.status_code == 200
+
+
+def test_auth_login_profile_create_integrity_error_still_returns_200(client, mocker, db):
+    user = User(email="noprofile@test.com", cognito_sub="sub-noprofile")
+    db.add(user)
+    db.commit()
+
+    mocker.patch(
+        "app.routes.auth.cognito_service.authenticate_user",
+        return_value={
+            "access_token": "token1",
+            "id_token": "token2",
+            "refresh_token": "token3",
+        },
+    )
+    mocker.patch.object(db, "commit", side_effect=IntegrityError(None, None, None))
+
+    response = client.post(
+        "/auth/login",
+        json={"email": "noprofile@test.com", "password": "Password123!"},
+    )
+
+    assert response.status_code == 200
 
 # Test forgot password request
 def test_auth_forgot_password(client, mocker):

@@ -1,6 +1,6 @@
 # app/services/bookshelf_service.py
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List, Literal
 import json
 
@@ -25,8 +25,7 @@ SORT_MAP = {
 
 
 def _now() -> datetime:
-    # naive UTC for consistency
-    return datetime.utcnow()
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def _validate_transition(old: str, new: str) -> None:

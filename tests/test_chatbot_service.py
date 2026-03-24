@@ -43,6 +43,14 @@ def test_get_user_mood_returns_latest_mood_from_db():
     assert service._get_user_mood("u1") == "curious"
 
 
+def test_get_user_mood_returns_default_when_no_entry_found():
+    db = MagicMock()
+    db.execute.return_value.scalars.return_value.first.return_value = None
+    service = ChatbotService(db=db)
+
+    assert service._get_user_mood("u1") == "peaceful"
+
+
 def test_get_user_mood_returns_default_when_query_fails():
     db = MagicMock()
     db.execute.side_effect = RuntimeError("db error")

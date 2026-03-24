@@ -67,6 +67,22 @@ def test_get_all_user_reviews_groups_and_filters():
     assert out == {"b1": ["one", "two"], "b2": ["three"]}
 
 
+def test_get_all_user_reviews_without_book_id_filter():
+    service = SynopsisSyncService(openai_api_key=None)
+    rows = [
+        SimpleNamespace(book_id="b1", body="one"),
+        SimpleNamespace(book_id="b2", body="two"),
+    ]
+
+    q = _FakeQuery(all_result=rows)
+    db = MagicMock()
+    db.query.return_value = q
+
+    out = service.get_all_user_reviews(db)
+
+    assert out == {"b1": ["one"], "b2": ["two"]}
+
+
 def test_get_all_user_reviews_raises_on_error():
     service = SynopsisSyncService(openai_api_key=None)
     db = MagicMock()
