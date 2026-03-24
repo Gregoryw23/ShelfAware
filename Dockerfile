@@ -6,6 +6,10 @@ WORKDIR /app
 COPY ref_frontend/package*.json ./
 RUN npm install
 
+# Set build-time environment variable for the frontend
+ARG VITE_API_BASE_URL=""
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # Copy the rest of the frontend source code and build the application
 COPY ref_frontend/ .
 RUN npm run build

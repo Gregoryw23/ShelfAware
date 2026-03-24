@@ -29,6 +29,10 @@ from app.routes import recommendation_routes
 # It falls back to serving 'index.html' for any path that is not found,
 # which allows client-side routing to work correctly.
 class SPAStaticFiles(StaticFiles):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("html", True)
+        super().__init__(*args, **kwargs)
+
     async def get_response(self, path: str, scope):
         try:
             return await super().get_response(path, scope)
