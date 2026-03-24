@@ -1,6 +1,6 @@
 import json
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch, call
 from sqlalchemy.orm import Session
 
@@ -386,7 +386,7 @@ class TestGetStats:
 
     # Test fetching stats counts books read this year and this month based on date_finished
     def test_get_stats_counts_this_year_and_month(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         item = self._make_read_item(
             date_started=datetime(now.year, now.month, 1),
             date_finished=datetime(now.year, now.month, 15),
@@ -399,7 +399,7 @@ class TestGetStats:
 
     #  Test fetching stats with a book finished in a previous month/year does not count towards this month/year totals
     def test_get_stats_avg_days_calculated(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         item = self._make_read_item(
             date_started=datetime(now.year, now.month, 1),
             date_finished=datetime(now.year, now.month, 11),
@@ -419,7 +419,7 @@ class TestGetStats:
 
     #Test fetching stats uses date_added as fallback when no date_started for calculating avg_days_to_finish
     def test_get_stats_uses_date_added_when_no_date_started(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         item = make_shelf(
             shelf_status="read",
             date_added=datetime(now.year, now.month, 1),
@@ -433,7 +433,7 @@ class TestGetStats:
 
     # Test fetching stats with multiple books calculates the best streak of consecutive days reading correctly
     def test_get_stats_streak_consecutive_days(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         today = now.date()
         items = [
             self._make_read_item(
@@ -448,7 +448,7 @@ class TestGetStats:
         assert result["best_streak_days"] >= 3
     # Test fetching stats with a book finished before it was started is excluded from average days to finish calculation
     def test_get_stats_finished_before_started_excluded_from_avg(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         item = self._make_read_item(
             date_started=datetime(now.year, now.month, 10),
             date_finished=datetime(now.year, now.month, 5),  # before start
@@ -460,7 +460,7 @@ class TestGetStats:
 
     # Test fetching stats with a book finished today counts towards the current streak
     def test_get_stats_current_streak_today(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         item = self._make_read_item(
             date_started=datetime(now.year, now.month, now.day),
             date_finished=datetime(now.year, now.month, now.day),

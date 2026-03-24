@@ -185,8 +185,18 @@ def test_get_reviews_for_book_with_pagination(client, mock_review_service):
 
 #Test fetching a specific review return 200 when the review exists
 def test_get_review_success(client, mock_review_service):
-    from unittest.mock import Mock
     mock_review = Mock()
+    mock_review.review_id = "review-789"
+    mock_review.book_id = "book-456"
+    mock_review.user_id = "user-123"
+    mock_review.rating = 5
+    mock_review.title = "Book title"
+    mock_review.body = "Body text"
+    mock_review.comment = "Body text"
+    mock_review.book_mood = None
+    mock_review.mood = None
+    mock_review.created_at = datetime.now()
+    mock_review.updated_at = datetime.now()
     mock_review_service.return_value._get_review_or_404.return_value = mock_review
     response = client.get("/reviews/review-789")
     assert response.status_code == 200
@@ -202,8 +212,19 @@ def test_get_review_not_found(client, mock_review_service):
 
 # Test updating a review return 200 when successful
 def test_update_review_success(client, mock_review_service):
-    from unittest.mock import Mock
-    mock_review_service.return_value.update_review.return_value = Mock()
+    mock_review = Mock()
+    mock_review.review_id = "review-789"
+    mock_review.book_id = "book-456"
+    mock_review.user_id = "user-123"
+    mock_review.rating = 4
+    mock_review.title = "Book title"
+    mock_review.body = "Updated review"
+    mock_review.comment = "Updated review"
+    mock_review.book_mood = None
+    mock_review.mood = None
+    mock_review.created_at = datetime.now()
+    mock_review.updated_at = datetime.now()
+    mock_review_service.return_value.update_review.return_value = mock_review
     payload = {"rating": 4, "comment": "Updated review"}
     response = client.put("/reviews/review-789", json=payload)
     assert response.status_code == 200
