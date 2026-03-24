@@ -1,5 +1,9 @@
 // API service for connecting to the ShelfAware backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://54.254.9.171:8000';
+// Default to same-origin paths so single-image deployments work without extra frontend env config.
+const RAW_API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = typeof RAW_API_BASE_URL === 'string'
+  ? RAW_API_BASE_URL.replace(/\/+$/, '')
+  : '';
 
 export class ApiError extends Error {
   status: number;
