@@ -138,15 +138,6 @@ class CognitoService:
         :param password: Password of the user.
         :return: Dictionary containing tokens if authentication is successful.
         """
-        # For development: if Cognito not configured, return fake tokens
-        if not self.region or not self.user_pool_id or not self.client_id:
-            # Simple development auth: accept any password
-            return {
-                "id_token": "fake_id_token",
-                "access_token": "fake_access_token",
-                "refresh_token": "fake_refresh_token"
-            }
-        
         try:
             # Calculate the SECRET_HASH
             secret_hash = self.calculate_secret_hash(username)
@@ -191,10 +182,6 @@ class CognitoService:
         """
         Register a new user with a distinct username, and store the user's email in Cognito.
         """
-        # For development: if Cognito not configured, return fake response
-        if not self.region or not self.user_pool_id or not self.client_id:
-            return {"UserSub": "fake_user_sub"}
-        
         try:
             # Calculate the SECRET_HASH if your app client has a client secret
             secret_hash = self.calculate_secret_hash(username)
@@ -224,10 +211,6 @@ class CognitoService:
         """
         Confirm the user's signup with the code they received by email
         """
-        # For development: if Cognito not configured, just return success
-        if not self.region or not self.user_pool_id or not self.client_id:
-            return "User confirmed successfully."
-        
         try:
             # First confirm the sign-up
             self.client.confirm_sign_up(
@@ -256,7 +239,7 @@ class RoleChecker:
                  cognito_service: CognitoService = Depends(CognitoService)):
         # Validate the token and check the user's role
         if not auth:
-            raise ServiceException(status_code=401, detail="Not authenticated")
+            raise ServiceException(status_code=403, detail="Not authenticated")
         claims = cognito_service.validate_token(auth)
         cognito_service.check_user_role(claims, self.allowed_role)
         return claims

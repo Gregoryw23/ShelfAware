@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,7 +8,7 @@ from app.routes import chatbot
 
 
 def make_book(book_id="b1", title="Book One"):
-    return Book(book_id=book_id, title=title, created_at=datetime.utcnow())
+    return Book(book_id=book_id, title=title, created_at=datetime.now(timezone.utc).replace(tzinfo=None))
 
 
 def test_get_chatbot_service_wires_dependencies():

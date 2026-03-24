@@ -13,6 +13,7 @@ with patch("app.services.cognito_service.boto3.client") as mock_boto_client, \
     from app.main import app
 
 from app.models.book import Book
+from app.models.genre import Genre
 from app.schemas.book import BookCreate, BookUpdate, BookRead
 from app.dependencies.services import get_book_service
 from app.dependencies.auth import get_current_user
@@ -100,6 +101,19 @@ def clear_dependency_overrides():
 
 
 class TestBookRoutes:
+    def test_get_genres_success(self, client, db):
+        db.add(Genre(name="Fantasy"))
+        db.add(Genre(name="Biography"))
+        db.commit()
+
+        response = client.get("/books/genres")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "Biography" in data
+        assert "Fantasy" in data
+        assert data.index("Biography") < data.index("Fantasy")
+
     def test_get_books_success(self, client, mock_book_service, sample_book_read):
         mock_book_service.get_books.return_value = [sample_book_read]
         app.dependency_overrides[get_book_service] = lambda: mock_book_service

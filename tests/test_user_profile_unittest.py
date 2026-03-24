@@ -16,6 +16,24 @@ def test_get_my_profile_auto_create(client, db):
     assert response.json()["display_name"] == "new_profile"
 
 
+def test_get_my_profile_existing_profile(client, db):
+    """Test GET profile returns existing profile without auto-create branch."""
+    test_user = User(email="existing_profile@example.com", cognito_sub="sub-existing")
+    db.add(test_user)
+    db.commit()
+
+    existing = UserProfile(user_id=test_user.user_id, display_name="ExistingName", bio="Already here")
+    db.add(existing)
+    db.commit()
+
+    app.dependency_overrides[get_current_db_user] = lambda: test_user
+    response = client.get("/user-profile/me")
+
+    assert response.status_code == 200
+    assert response.json()["display_name"] == "ExistingName"
+    assert response.json()["bio"] == "Already here"
+
+
 def test_patch_my_profile(client, db):
     """Test updating existing profile."""
     test_user = User(email="update@example.com", cognito_sub="sub-update")

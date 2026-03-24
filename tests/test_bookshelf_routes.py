@@ -292,6 +292,57 @@ class TestBookshelfRoutes:
         assert response.status_code == 400
         assert response.json()["detail"] == "Bad request"
 
+    def test_update_progress_success(self, client, mock_bookshelf_service, mock_user_obj, sample_bookshelf_read):
+        updated = dict(sample_bookshelf_read)
+        updated["updated_at"] = datetime.now()
+        mock_bookshelf_service.update_progress.return_value = updated
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
+
+        with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
+            response = client.patch(
+                "/bookshelf/book-123/progress",
+                json={"progress_percent": 60, "book_mood": "motivated"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["book_id"] == "book-123"
+
+        mock_bookshelf_service.update_progress.assert_called_once_with(
+            user_id="user-123",
+            book_id="book-123",
+            progress_percent=60,
+            mood=None,
+            moods=None,
+            book_mood="motivated",
+            book_moods=None,
+        )
+
+    def test_update_progress_not_found(self, client, mock_bookshelf_service, mock_user_obj):
+        mock_bookshelf_service.update_progress.side_effect = ValueError("NOT_FOUND")
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
+
+        with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
+            response = client.patch(
+                "/bookshelf/book-123/progress",
+                json={"progress_percent": 40},
+            )
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Book not found on shelf"
+
+    def test_update_progress_other_error(self, client, mock_bookshelf_service, mock_user_obj):
+        mock_bookshelf_service.update_progress.side_effect = ValueError("Bad request")
+        app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj
+
+        with patch("app.routes.bookshelf.get_bookshelf_service", return_value=mock_bookshelf_service):
+            response = client.patch(
+                "/bookshelf/book-123/progress",
+                json={"progress_percent": 40},
+            )
+
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Bad request"
+
     def test_timeline_success(self, client, mock_bookshelf_service, mock_user_obj, sample_bookshelf_read):
         mock_bookshelf_service.get_timeline.return_value = [sample_bookshelf_read]
         app.dependency_overrides[get_current_db_user] = lambda: mock_user_obj

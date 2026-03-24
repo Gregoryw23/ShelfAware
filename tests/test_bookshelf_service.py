@@ -469,3 +469,34 @@ class TestGetStats:
 
         result = self.service.get_stats(user_id="user-1")
         assert result["current_streak_days"] >= 1
+
+    # Test that a book finished in a prior year is not counted towards this year or this month
+    # (covers the false branches of both 'if df.year == this_year' and 'if (df.year, df.month) == this_month')
+    def test_get_stats_prior_year_book_not_counted(self):
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        item = self._make_read_item(
+            date_started=datetime(now.year - 1, 1, 1),
+            date_finished=datetime(now.year - 1, 1, 31),
+        )
+        self.db.execute.return_value = mock_scalars([item])
+
+        result = self.service.get_stats(user_id="user-1")
+        assert result["read_this_year"] == 0
+        assert result["read_this_month"] == 0
+
+    # Test that the current-streak back-traversal breaks when it encounters a non-consecutive day gap
+    def test_get_stats_current_streak_breaks_at_gap(self):
+        anchor = datetime(2026, 3, 24)  # a fixed "today" with known neighbours
+        yesterday = datetime(2026, 3, 23)
+        long_ago = datetime(2025, 1, 1)
+        items = [
+            self._make_read_item(date_started=long_ago, date_finished=long_ago),
+            self._make_read_item(date_started=yesterday, date_finished=yesterday),
+            self._make_read_item(date_started=anchor, date_finished=anchor),
+        ]
+        self.db.execute.return_value = mock_scalars(items)
+
+        with patch("app.services.bookshelf_service._now", return_value=anchor):
+            result = self.service.get_stats(user_id="user-1")
+
+        assert result["current_streak_days"] == 2  # anchor + yesterday; long_ago breaks the streak

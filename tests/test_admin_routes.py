@@ -10,6 +10,19 @@ def test_list_users_no_auth_returns_403(client):
     assert response.status_code == 403
 
 
+def test_list_users_with_admin_auth_returns_200(client):
+    """Covers successful admin auth path and list_users response."""
+    with patch("app.services.cognito_service.CognitoService.validate_token", return_value={"sub": "u1"}):
+        with patch("app.services.cognito_service.CognitoService.check_user_role", return_value=True):
+            response = client.get(
+                "/admin/users",
+                headers={"Authorization": "Bearer fake-token"},
+            )
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "Admin access granted"}
+
+
 # --- POST /admin/generate-community-reviews (lines 40-62) ---
 
 def test_generate_community_reviews_missing_api_key(client):

@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.dependencies.auth import get_current_user
 from app.main import app
+from app.routes.review import resolve_user_id
 from app.services.review_service import ReviewService
 
 
@@ -166,6 +167,17 @@ def test_create_review_raises_401_when_sub_not_in_db(client, mock_review_service
     response = client.post("/reviews/books/book-456", json={"rating": 4, "comment": "test"})
     assert response.status_code == 401
     assert "not found in database" in response.json()["detail"]
+
+
+def test_resolve_user_id_from_db_user_sub_path():
+    mock_db = Mock()
+    db_user = Mock()
+    db_user.user_id = "resolved-user-123"
+    mock_db.query.return_value.filter.return_value.first.return_value = db_user
+
+    resolved = resolve_user_id({"sub": "cognito-sub-xyz"}, mock_db)
+
+    assert resolved == "resolved-user-123"
 
 # Test fetching reviews return 200 with empty list when no reviews exist for the book
 def test_get_reviews_for_book_success(client, mock_review_service):
