@@ -24,6 +24,10 @@ from app.routes import user_profile
 from app.routes import review
 from app.routes import recommendation_routes
 
+from fastapi.responses import JSONResponse
+from fastapi.requests import Request
+
+
 
 # This helper class is for serving the Single Page Application (SPA).
 # It falls back to serving 'index.html' for any path that is not found,
@@ -151,3 +155,8 @@ if os.path.exists(os.path.join(static_dir, "index.html")):
     logger.info("Static files mounted successfully (Full-stack mode)")
 else:
     logger.info("Static files not found or index.html missing. Running in Backend-only mode.")
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return JSONResponse(status_code=500, content={"detail": traceback.format_exc()})

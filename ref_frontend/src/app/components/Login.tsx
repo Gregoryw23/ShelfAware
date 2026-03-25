@@ -23,42 +23,49 @@ export function Login({ onLogin }: LoginProps) {
   const [confirmationCode, setConfirmationCode] = useState('');
   const [isConfirmingAccount, setIsConfirmingAccount] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent, isAdmin: boolean = false) => {
-    e.preventDefault();
+const handleLogin = async (e: React.FormEvent, isAdmin: boolean = false) => {
+  e.preventDefault();
+
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail || !password.trim()) {
+    toast.error('Please enter email and password');
+    return;
+  }
+
+  try {
+    setIsSigningIn(true);
+    const result = await apiService.login(normalizedEmail, password);
+    const accessToken = result.tokens?.access_token;
+    if (!accessToken) {
+      throw new Error('Login response did not include an access token');
+    }
+
     if (isAdmin) {
-      onLogin(true);
-      navigate('/admin');
-      return;
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail || !password.trim()) {
-      toast.error('Please enter email and password');
-      return;
-    }
-
-    try {
-      setIsSigningIn(true);
-      const result = await apiService.login(normalizedEmail, password);
-      const accessToken = result.tokens?.access_token;
-      if (!accessToken) {
-        throw new Error('Login response did not include an access token');
+      const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://54.254.9.171:8000';
+      const adminCheckResponse = await fetch(`${baseUrl}/admin/users`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!adminCheckResponse.ok) {
+        throw new Error('Admin access denied');
       }
-
+      onLogin(true, { accessToken, email: result.user.email, userId: result.user.user_id });
+      navigate('/admin');
+    } else {
       onLogin(false, { accessToken, email: result.user.email, userId: result.user.user_id });
       navigate('/inspiration');
-    } catch (error) {
-      console.error('Login failed:', error);
-      if (error instanceof ApiError && error.status === 403 && error.message.toLowerCase().includes('not confirmed')) {
-        toast.error('Account not confirmed. Check your email for the confirmation code, then confirm before signing in.');
-        setShowConfirmAccount(true);
-      } else {
-        toast.error(error instanceof Error ? error.message : 'Failed to sign in');
-      }
-    } finally {
-      setIsSigningIn(false);
     }
-  };
+  } catch (error) {
+    console.error('Login failed:', error);
+    if (error instanceof ApiError && error.status === 403 && error.message.toLowerCase().includes('not confirmed')) {
+      toast.error('Account not confirmed. Check your email for the confirmation code.');
+      setShowConfirmAccount(true);
+    } else {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in');
+    }
+  } finally {
+    setIsSigningIn(false);
+  }
+};
 
   const handleConfirmAccount = async () => {
     const normalizedEmail = email.trim().toLowerCase();
